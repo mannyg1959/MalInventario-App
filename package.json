@@ -1,0 +1,12 @@
+{
+  "name": "malinventario-app",
+  "version": "1.7.2",
+  "description": "Gestión de Activos IT - MalInventario",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
