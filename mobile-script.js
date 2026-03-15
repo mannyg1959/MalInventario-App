@@ -21,8 +21,8 @@ const api = {
             throw new Error('CONFIG_MISSING');
         }
 
-        // Limpieza extrema de credenciales
-        const cleanBaseId = state.config.baseId.trim().toLowerCase().replace(/\s/g, ''); 
+        // Limpieza de espacios pero respetando MAYÚSCULAS/minúsculas
+        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, ''); 
         const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
         
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
@@ -383,7 +383,7 @@ const ui = {
         `;
         modal.classList.remove('hidden');
         document.getElementById('save-config').onclick = () => {
-            const bid = document.getElementById('config-base').value.trim().toLowerCase();
+            const bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
             if(!bid || !key) return alert('Datos necesarios');
             localStorage.setItem('airtable_base_id', bid);
