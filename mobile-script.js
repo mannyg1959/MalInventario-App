@@ -21,8 +21,13 @@ const api = {
             ui.showToast('⚠️ Falta configuración de Airtable', 'error');
             throw new Error('Config missing');
         }
+        const cleanBaseId = state.config.baseId.trim().replace(/\/$/, ''); // Quitar barra al final si existe
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
-        const url = `${baseUrl}/${state.config.baseId}${path}`;
+        
+        // Construir URL asegurando que no haya dobles barras después de v0 o bases
+        const url = `${baseUrl}/${cleanBaseId}${cleanPath}`.replace(/([^:]\/)\/+/g, "$1");
+        
         const headers = { 
             'Authorization': `Bearer ${state.config.apiKey.trim()}`, 
             'Content-Type': 'application/json' 
@@ -108,12 +113,26 @@ const ui = {
         listContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div><p>Sincronizando...</p></div>';
         
         try {
-            state.equipments = await api.getAll('Assets');
+            // Intentar cargar la tabla 'Assets'
+            try {
+                state.equipments = await api.getAll('Assets');
+            } catch (err) {
+                // Si falla (404), intentar buscar la tabla en los metadatos
+                console.log("Tabla 'Assets' no encontrada, buscando alternativa...");
+                const meta = await api.getTables();
+                const table = meta.tables.find(t => t.name.toLowerCase().includes('asset') || t.name === 'Equipos' || t.name === 'Inventario');
+                if (table) {
+                    state.equipments = await api.getAll(table.name);
+                } else {
+                    throw err; // Si no hay ni tabla ni alternativa, lanzar error original
+                }
+            }
             this.renderList();
         } catch (e) {
             listContainer.innerHTML = `<div class="loader-container">
                 <p>Error al cargar datos.</p>
                 <p style="font-size:0.7rem; color:red; margin-top:10px;">Detalle: ${e.message}</p>
+                <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile" style="margin-top:15px; background:#ef4444">Revisar Configuración</button>
             </div>`;
         }
     },
