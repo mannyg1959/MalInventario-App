@@ -135,7 +135,7 @@ body {
 }
 
 .form-content {
-    padding: 16px;
+    padding: 16px 12px;
 }
 
 .form-content.hidden {
@@ -163,13 +163,14 @@ body {
 .field-group input, 
 .field-group select, 
 .field-group textarea {
-    padding: 10px 12px;
+    padding: 12px;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: 1rem; /* Aumentado para evitar zoom en iOS */
     font-family: inherit;
     outline: none;
     background: #fcfcfc;
+    width: 100%; /* Asegurar que ocupen todo el ancho */
 }
 
 .field-group input:focus, .field-group select:focus {
@@ -178,9 +179,18 @@ body {
 }
 
 .fields-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Permitir 2 columnas solo en pantallas un poco más anchas (p.ej tablets o móviles en horizontal) */
+@media (min-width: 480px) {
+    .fields-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
 }
 
 .image-picker {
