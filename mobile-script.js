@@ -111,7 +111,10 @@ const ui = {
             state.equipments = await api.getAll('Assets');
             this.renderList();
         } catch (e) {
-            listContainer.innerHTML = '<div class="loader-container"><p>Error al cargar datos.</p></div>';
+            listContainer.innerHTML = `<div class="loader-container">
+                <p>Error al cargar datos.</p>
+                <p style="font-size:0.7rem; color:red; margin-top:10px;">Detalle: ${e.message}</p>
+            </div>`;
         }
     },
 
