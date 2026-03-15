@@ -1,9 +1,7 @@
 {
   "version": 2,
-  "public": true,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/", "destination": "/mobile.html" },
-    { "source": "/desktop", "destination": "/index.html" }
+    { "source": "/desktop", "destination": "/desktop.html" }
   ]
 }

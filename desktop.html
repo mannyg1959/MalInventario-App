@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MalInventario - Gestión de Activos IT</title>
+    <link rel="stylesheet" href="style.css?v=172">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand-top">
+                    <i class="fas fa-microchip logo-icon"></i>
+                    <span class="logo-text">MalInventario</span>
+                </div>
+                <img src="assets/logo-maldita.png" alt="Logo Fundación Maldita" class="sidebar-maldita-logo">
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-view="dashboard">
+                        <i class="fas fa-th-large"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="nav-item" data-view="inventory">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventario</span>
+                    </li>
+                    <li class="nav-item" data-view="employees">
+                        <i class="fas fa-users"></i>
+                        <span>Empleados</span>
+                    </li>
+                    <li class="nav-item" data-view="assignments">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Asignaciones</span>
+                    </li>
+                    <li class="nav-item" data-view="brands">
+                        <i class="fas fa-tags"></i>
+                        <span>Marcas</span>
+                    </li>
+                    <li class="nav-item" data-view="config">
+                        <i class="fas fa-cog"></i>
+                        <span>Configuración</span>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="toggle-sidebar" class="icon-btn mobile-only">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-title-header">
+                    <i id="page-title-icon" class="fas fa-boxes-stacked header-icon"></i>
+                    <span id="page-title-text" class="header-title">Registro de Inventario</span>
+                </div>
+            </header>
+
+            <div id="content-area">
+                <!-- Dynamic content -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-container" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Título</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Initial Config -->
+    <div id="config-overlay" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Bienvenido a MalInventario</h2>
+            </div>
+            <div class="modal-body">
+                <p>Configura tu acceso a Airtable para comenzar.</p>
+                <form id="config-form">
+                    <div class="form-group">
+                        <label>Base ID</label>
+                        <input type="text" id="base-id" placeholder="appXXXXXXXXXXXXXX" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Personal Access Token (API Key)</label>
+                        <input type="password" id="api-key" placeholder="patXXXXXXXXXXXXXX" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">Guardar y Conectar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=173"></script>
+</body>
+
+</html>
