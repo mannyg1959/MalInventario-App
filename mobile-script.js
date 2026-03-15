@@ -16,31 +16,28 @@ const state = {
 };
 
 const api = {
-    async request(path, method = 'GET', data = null, isMeta = false) {
-        if (!state.config.baseId || !state.config.apiKey) { 
-            ui.showToast('⚠️ Falta configuración de Airtable', 'error');
-            throw new Error('Config missing');
-        }
-        const cleanBaseId = state.config.baseId.trim().replace(/\/$/, ''); // Quitar barra al final si existe
+        const cleanBaseId = state.config.baseId.trim().split(' ')[0]; // Limpieza estricta
+        const cleanApiKey = state.config.apiKey.trim().split(' ')[0];
+        
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
-        
-        // Construir URL asegurando que no haya dobles barras después de v0 o bases
-        const url = `${baseUrl}/${cleanBaseId}${cleanPath}`.replace(/([^:]\/)\/+/g, "$1");
+        const url = `${baseUrl}/${cleanBaseId}${cleanPath}`;
         
         const headers = { 
-            'Authorization': `Bearer ${state.config.apiKey.trim()}`, 
+            'Authorization': `Bearer ${cleanApiKey}`, 
             'Content-Type': 'application/json' 
         };
         
         try {
             const response = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : null });
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error?.message || `Error ${response.status}`);
+            if (!response.ok) {
+                const errorMsg = result.error?.message || `Error ${response.status}`;
+                throw new Error(`${errorMsg} (URL: ${cleanPath})`);
+            }
             return result;
         } catch (err) {
             console.error("API Error:", err);
-            ui.showToast('❌ Error de conexión', 'error');
             throw err;
         }
     },
@@ -387,19 +384,21 @@ const ui = {
 
         modal.classList.remove('hidden');
 
-        document.getElementById('save-config').onclick = () => {
             const bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
-            if(!bid || !key) return alert('Campos requeridos');
+            if(!bid || !key) return alert('Por favor, rellene ambos campos.');
             
-            localStorage.setItem('airtable_base_id', bid);
-            localStorage.setItem('airtable_api_key', key);
-            state.config.baseId = bid;
-            state.config.apiKey = key;
+            // Guardar con limpieza extra
+            const finalBid = bid.replace(/\s/g, ''); 
+            const finalKey = key.replace(/\s/g, '');
+
+            localStorage.setItem('airtable_base_id', finalBid);
+            localStorage.setItem('airtable_api_key', finalKey);
+            state.config.baseId = finalBid;
+            state.config.apiKey = finalKey;
             
             this.closeModal();
-            this.loadInitialData();
-            this.showToast('Configuración guardada');
+            location.reload(); // Recarga real para asegurar que todo el estado se limpie
         };
     },
 
