@@ -3,6 +3,7 @@
   "public": true,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/mobile", "destination": "/mobile.html" }
+    { "source": "/", "destination": "/mobile.html" },
+    { "source": "/desktop", "destination": "/index.html" }
   ]
 }
