@@ -16,8 +16,13 @@ const state = {
 };
 
 const api = {
-        const cleanBaseId = state.config.baseId.trim().split(' ')[0]; // Limpieza estricta
-        const cleanApiKey = state.config.apiKey.trim().split(' ')[0];
+    async request(path, method = 'GET', data = null, isMeta = false) {
+        if (!state.config.baseId || !state.config.apiKey) { 
+            ui.showToast('⚠️ Falta configuración', 'error');
+            throw new Error('Config missing');
+        }
+        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, ''); 
+        const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
         
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
@@ -256,7 +261,7 @@ const ui = {
         try {
             const fields = {
                 'Marca': document.getElementById('mob-brand').value,
-                'Modelo': 'Genérico', // Podemos simplificar o añadir campo si se desea
+                'Modelo': 'Genérico', 
                 'Categoría': document.getElementById('mob-cat').value,
                 'Número de Serie': document.getElementById('mob-sn').value,
                 'Estado': document.getElementById('mob-status').value,
@@ -359,6 +364,7 @@ const ui = {
 
     showToast(msg, type = 'success') {
         const toast = document.getElementById('mob-toast');
+        if (!toast) return;
         toast.innerText = msg;
         toast.style.background = type === 'error' ? 'var(--error)' : '#1e293b';
         toast.classList.remove('hidden');
@@ -372,18 +378,28 @@ const ui = {
         
         body.innerHTML = `
             <div class="field-group">
-                <label>Base ID</label>
-                <input type="text" id="config-base" value="${state.config.baseId}" placeholder="app...">
+                <label>Base ID (debe empezar con 'app...')</label>
+                <input type="text" id="config-base" value="${state.config.baseId}" placeholder="Ej: appXXXXXXXXXXXXXX">
             </div>
             <div class="field-group">
-                <label>API Key / Token</label>
-                <input type="password" id="config-key" value="${state.config.apiKey}" placeholder="pat...">
+                <label>Personal Access Token (debe empezar con 'pat...')</label>
+                <div style="position:relative">
+                    <input type="password" id="config-key" value="${state.config.apiKey}" placeholder="Ej: patXXXXXXXXXXXXXX">
+                    <button type="button" onclick="const p = document.getElementById('config-key'); p.type = p.type === 'password' ? 'text' : 'password';" 
+                            style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#3b5da3; font-size:1.2rem">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
-            <button id="save-config" class="btn btn-primary-mobile">CONECTAR</button>
+            <p style="font-size:0.65rem; color:#64748b; margin-bottom:15px; line-height:1.2">
+                * Encuentra estos datos en <a href="https://airtable.com/create/tokens" target="_blank" style="color:#3b5da3">Airtable Builders</a>.
+            </p>
+            <button id="save-config" class="btn btn-primary-mobile">GUARDAR Y CONECTAR</button>
         `;
 
         modal.classList.remove('hidden');
 
+        document.getElementById('save-config').onclick = () => {
             const bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
             if(!bid || !key) return alert('Por favor, rellene ambos campos.');
@@ -398,7 +414,7 @@ const ui = {
             state.config.apiKey = finalKey;
             
             this.closeModal();
-            location.reload(); // Recarga real para asegurar que todo el estado se limpie
+            location.reload(); 
         };
     },
 
@@ -408,8 +424,6 @@ const ui = {
 
     previewImage(url) {
         if(!url) return;
-        // Podríamos abrir un modal con la imagen grande
-        this.showToast('Abriendo imagen...');
         window.open(url, '_blank');
     }
 };
