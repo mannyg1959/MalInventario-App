@@ -1,5 +1,5 @@
 /**
- * MalInventario Móvil - Especializado para Toma de Inventario
+ * MalInventario Móvil - Versión de Ultra-Compatibilidad
  */
 
 const state = {
@@ -9,8 +9,8 @@ const state = {
     },
     equipments: [],
     brands: [],
-    categories: [],
-    statuses: [],
+    categories: ['Laptop', 'Desktop', 'Monitor', 'Periférico', 'Móvil', 'Otro'],
+    statuses: ['Disponible', 'Asignado', 'Reparación', 'Baja'],
     currentEditId: null,
     searchQuery: ''
 };
@@ -18,15 +18,15 @@ const state = {
 const api = {
     async request(path, method = 'GET', data = null, isMeta = false) {
         if (!state.config.baseId || !state.config.apiKey) { 
-            ui.showToast('⚠️ Falta configuración', 'error');
-            throw new Error('Config missing');
+            throw new Error('CONFIG_MISSING');
         }
-        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, ''); 
+
+        // Limpieza extrema de credenciales
+        const cleanBaseId = state.config.baseId.trim().toLowerCase().replace(/\s/g, ''); 
         const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
         
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
-        const url = `${baseUrl}/${cleanBaseId}${cleanPath}`;
+        const url = `${baseUrl}/${cleanBaseId}${path}`;
         
         const headers = { 
             'Authorization': `Bearer ${cleanApiKey}`, 
@@ -37,8 +37,7 @@ const api = {
             const response = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : null });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const errorMsg = result.error?.message || `Error ${response.status}`;
-                throw new Error(`${errorMsg} (URL: ${cleanPath})`);
+                throw new Error(`${result.error?.message || response.status}`);
             }
             return result;
         } catch (err) {
@@ -46,16 +45,17 @@ const api = {
             throw err;
         }
     },
-    async getAll(table) { return (await this.request(`/${table}`)).records || []; },
-    async create(table, fields) { return await this.request(`/${table}`, 'POST', { fields }); },
-    async update(table, id, fields) { return await this.request(`/${table}/${id}`, 'PATCH', { fields }); },
-    async delete(table, id) { return await this.request(`/${table}/${id}`, 'DELETE'); },
+    async getAll(table) { return (await this.request(`/${encodeURIComponent(table)}`)).records || []; },
+    async create(table, fields) { return await this.request(`/${encodeURIComponent(table)}`, 'POST', { fields }); },
+    async update(table, id, fields) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'PATCH', { fields }); },
+    async delete(table, id) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'DELETE'); },
     async getTables() { return await this.request('/tables', 'GET', null, true); }
 };
 
 const ui = {
     init() {
         this.bindEvents();
+        this.populateSelects(); // Llenar con defaults primero
         if (!state.config.baseId) {
             this.showConfigModal();
         } else {
@@ -65,7 +65,8 @@ const ui = {
 
     async loadInitialData() {
         try {
-            await this.refreshMetadata();
+            // Intentamos cargar metadatos pero si falla no bloqueamos la app
+            await this.refreshMetadata().catch(e => console.warn("Usando categorías por defecto"));
             await this.refreshInventory();
         } catch (e) {
             console.error(e);
@@ -78,36 +79,42 @@ const ui = {
             const assetTable = meta.tables.find(t => t.name === 'Assets');
             const brandsTable = await api.getAll('Marcas');
             
-            state.brands = brandsTable.map(b => b.fields.Nombre || b.fields.Name).filter(Boolean).sort();
+            if (brandsTable.length > 0) {
+                state.brands = brandsTable.map(b => b.fields.Nombre || b.fields.Name).filter(Boolean).sort();
+            }
 
             if (assetTable) {
                 const catField = assetTable.fields.find(f => f.name === 'Categoría');
                 if (catField?.options?.choices) {
                     state.categories = catField.options.choices.map(c => c.name);
                 }
-
                 const statusField = assetTable.fields.find(f => f.name === 'Estado');
                 if (statusField?.options?.choices) {
                     state.statuses = statusField.options.choices.map(c => c.name);
                 }
             }
-
             this.populateSelects();
         } catch (e) { 
-            console.error("Meta error:", e); 
+            console.error("No se pudieron sincronizar categorías:", e); 
         }
     },
 
     populateSelects() {
         const brandSel = document.getElementById('mob-brand');
-        brandSel.innerHTML = '<option value="">-- Seleccionar --</option>' + 
-            state.brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        if (brandSel) {
+            brandSel.innerHTML = '<option value="">-- Seleccionar --</option>' + 
+                state.brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
 
         const catSel = document.getElementById('mob-cat');
-        catSel.innerHTML = state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (catSel) {
+            catSel.innerHTML = state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
 
         const statusSel = document.getElementById('mob-status');
-        statusSel.innerHTML = state.statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (statusSel) {
+            statusSel.innerHTML = state.statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
     },
 
     async refreshInventory() {
@@ -115,55 +122,42 @@ const ui = {
         listContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div><p>Sincronizando...</p></div>';
         
         try {
-            // Intentar cargar la tabla 'Assets'
-            try {
-                state.equipments = await api.getAll('Assets');
-            } catch (err) {
-                // Si falla (404), intentar buscar la tabla en los metadatos
-                console.log("Tabla 'Assets' no encontrada, buscando alternativa...");
-                const meta = await api.getTables();
-                const table = meta.tables.find(t => t.name.toLowerCase().includes('asset') || t.name === 'Equipos' || t.name === 'Inventario');
-                if (table) {
-                    state.equipments = await api.getAll(table.name);
-                } else {
-                    throw err; // Si no hay ni tabla ni alternativa, lanzar error original
-                }
-            }
+            state.equipments = await api.getAll('Assets');
             this.renderList();
         } catch (e) {
-            listContainer.innerHTML = `<div class="loader-container">
-                <p>Error al cargar datos.</p>
-                <p style="font-size:0.7rem; color:red; margin-top:10px;">Detalle: ${e.message}</p>
-                <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile" style="margin-top:15px; background:#ef4444">Revisar Configuración</button>
-            </div>`;
+            const is404 = e.message.includes('404') || e.message.includes('NOT_FOUND');
+            listContainer.innerHTML = `
+                <div class="loader-container">
+                    <p style="font-weight:bold; color:#1e293b">Error de Conexión</p>
+                    <p style="font-size:0.75rem; color:#ef4444; margin: 10px 0;">
+                        ${is404 ? 'No se encuentra la Base de Datos o la tabla Assets. Verifica que el Base ID sea correcto (debe empezar con app...).' : e.message}
+                    </p>
+                    <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile" style="background:#3b5da3; margin-top:10px">REVISAR CONFIGURACIÓN</button>
+                    <p style="font-size:0.6rem; margin-top:15px; opacity:0.7">Tip: Copia el Base ID directamente desde la URL de tu navegador en PC.</p>
+                </div>`;
         }
     },
 
     renderList() {
         const listContainer = document.getElementById('mob-inventory-list');
         const countLabel = document.getElementById('items-count');
-        
+        if (!listContainer) return;
+
         const filtered = state.equipments.filter(e => {
-            const search = state.searchQuery.toLowerCase();
+            const search = (state.searchQuery || '').toLowerCase();
             return (e.fields.ID || '').toLowerCase().includes(search) ||
                    (e.fields.Marca || '').toLowerCase().includes(search) ||
                    (e.fields.Modelo || '').toLowerCase().includes(search) ||
                    (e.fields['Número de Serie'] || '').toLowerCase().includes(search);
         });
 
-        // Ordenar por ID descendente (más recientes arriba)
         filtered.sort((a, b) => {
             const idA = parseInt((a.fields.ID || '').replace('MAL', '')) || 0;
             const idB = parseInt((b.fields.ID || '').replace('MAL', '')) || 0;
             return idB - idA;
         });
 
-        countLabel.innerText = `${filtered.length} EQUIPOS ENCONTRADOS`;
-
-        if (filtered.length === 0) {
-            listContainer.innerHTML = '<div class="loader-container"><p>No se encontraron equipos.</p></div>';
-            return;
-        }
+        if (countLabel) countLabel.innerText = `${filtered.length} EQUIPOS ENCONTRADOS`;
 
         listContainer.innerHTML = filtered.map(e => {
             const img = e.fields.Foto?.[0]?.url || '';
@@ -184,7 +178,7 @@ const ui = {
                             <span class="badge ${statusClass}">${status}</span>
                         </div>
                         <div class="card-meta">
-                            <i class="fas fa-barcode"></i> ${(e.fields['Número de Serie'] || 'S/N').slice(0,15)}...
+                            <i class="fas fa-barcode"></i> ${(e.fields['Número de Serie'] || 'S/N').slice(0,20)}
                             <br>
                             <i class="fas fa-tag"></i> ${e.fields.Categoría || '-'}
                         </div>
@@ -206,50 +200,53 @@ const ui = {
     },
 
     bindEvents() {
-        // Toggle Form
-        document.getElementById('toggle-form').onclick = () => {
-            const content = document.getElementById('asset-form-container');
-            const header = document.getElementById('toggle-form');
-            content.classList.toggle('hidden');
-            header.classList.toggle('open');
-            
-            if (!content.classList.contains('hidden') && !state.currentEditId) {
-                document.getElementById('mob-id').value = this.generateNextMalId();
-            }
-        };
+        const toggleBtn = document.getElementById('toggle-form');
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                const content = document.getElementById('asset-form-container');
+                content.classList.toggle('hidden');
+                toggleBtn.classList.toggle('open');
+                if (!content.classList.contains('hidden') && !state.currentEditId) {
+                    document.getElementById('mob-id').value = this.generateNextMalId();
+                }
+            };
+        }
 
-        // Form Submit
-        document.getElementById('mobile-asset-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.saveAsset();
-        };
+        const form = document.getElementById('mobile-asset-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.saveAsset();
+            };
+        }
 
-        // Cancel Edit
-        document.getElementById('mob-btn-cancel').onclick = () => this.resetForm();
+        const cancelBtn = document.getElementById('mob-btn-cancel');
+        if (cancelBtn) cancelBtn.onclick = () => this.resetForm();
 
-        // Image URL Preview
         const imgInput = document.getElementById('mob-img');
-        const handleImgChange = () => {
-            const url = this.formatImageUrl(imgInput.value);
-            const preview = document.getElementById('mob-preview-box');
-            if (url) {
-                preview.innerHTML = `<img src="${url}" onerror="this.src=''; ui.showToast('Enlace no válido','error')">`;
-            } else {
-                preview.innerHTML = `<i class="fas fa-camera"></i><p>Pegue un enlace abajo</p>`;
-            }
-        };
-        imgInput.oninput = handleImgChange;
+        if (imgInput) {
+            imgInput.oninput = () => {
+                const url = this.formatImageUrl(imgInput.value);
+                const preview = document.getElementById('mob-preview-box');
+                if (url) {
+                    preview.innerHTML = `<img src="${url}" onerror="this.src='';">`;
+                } else {
+                    preview.innerHTML = `<i class="fas fa-camera"></i><p>Pega un enlace</p>`;
+                }
+            };
+        }
 
-        // Search
-        document.getElementById('mob-search').oninput = (e) => {
-            state.searchQuery = e.target.value;
-            this.renderList();
-        };
+        const searchInp = document.getElementById('mob-search');
+        if (searchInp) {
+            searchInp.oninput = (e) => {
+                state.searchQuery = e.target.value;
+                this.renderList();
+            };
+        }
 
-        // Header actions
-        document.getElementById('btn-refresh').onclick = () => this.refreshInventory();
-        document.getElementById('btn-config').onclick = () => this.showConfigModal();
-        document.getElementById('close-mob-modal').onclick = () => this.closeModal();
+        if (document.getElementById('btn-refresh')) document.getElementById('btn-refresh').onclick = () => this.refreshInventory();
+        if (document.getElementById('btn-config')) document.getElementById('btn-config').onclick = () => this.showConfigModal();
+        if (document.getElementById('close-mob-modal')) document.getElementById('close-mob-modal').onclick = () => this.closeModal();
     },
 
     async saveAsset() {
@@ -275,15 +272,17 @@ const ui = {
 
             if (state.currentEditId) {
                 await api.update('Assets', state.currentEditId, fields);
-                this.showToast('✅ Equipo actualizado');
+                this.showToast('✅ Actualizado');
             } else {
                 fields['ID'] = this.generateNextMalId();
                 await api.create('Assets', fields);
-                this.showToast('✅ Nuevo equipo registrado');
+                this.showToast('✅ Registrado');
             }
 
             this.resetForm();
             await this.refreshInventory();
+            document.getElementById('asset-form-container').classList.add('hidden');
+            document.getElementById('toggle-form').classList.remove('open');
         } catch (e) {
             this.showToast('❌ Error al guardar', 'error');
         } finally {
@@ -295,14 +294,11 @@ const ui = {
     editAsset(id) {
         const asset = state.equipments.find(e => e.id === id);
         if (!asset) return;
-
         state.currentEditId = id;
         
-        // Abrir formulario si está cerrado
-        const content = document.getElementById('asset-form-container');
-        if (content.classList.contains('hidden')) document.getElementById('toggle-form').click();
+        document.getElementById('asset-form-container').classList.remove('hidden');
+        document.getElementById('toggle-form').classList.add('open');
 
-        // Llenar datos
         document.getElementById('mob-id').value = asset.fields.ID || '';
         document.getElementById('mob-brand').value = asset.fields.Marca || '';
         document.getElementById('mob-sn').value = asset.fields['Número de Serie'] || '';
@@ -313,23 +309,19 @@ const ui = {
         const img = asset.fields.Foto?.[0]?.url || '';
         document.getElementById('mob-img').value = img;
         
-        // Preview
         const preview = document.getElementById('mob-preview-box');
-        preview.innerHTML = img ? `<img src="${img}">` : `<i class="fas fa-camera"></i><p>Pegue un enlace abajo</p>`;
+        preview.innerHTML = img ? `<img src="${img}">` : `<i class="fas fa-camera"></i>`;
 
-        // UI Changes
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-check"></i> ACTUALIZAR ITEM';
         document.getElementById('mob-btn-cancel').classList.remove('hidden');
-        document.getElementById('toggle-form').querySelector('h3').innerHTML = '<i class="fas fa-edit"></i> Editando Item';
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     async deleteAsset(id) {
-        if (!confirm('¿Seguro que quieres eliminar este equipo?')) return;
+        if (!confirm('¿Eliminar equipo?')) return;
         try {
             await api.delete('Assets', id);
-            this.showToast('🗑️ Eliminado correctamente');
+            this.showToast('🗑️ Eliminado');
             await this.refreshInventory();
         } catch (e) {}
     },
@@ -337,10 +329,9 @@ const ui = {
     resetForm() {
         state.currentEditId = null;
         document.getElementById('mobile-asset-form').reset();
-        document.getElementById('mob-preview-box').innerHTML = `<i class="fas fa-camera"></i><p>Pegue un enlace abajo</p>`;
+        document.getElementById('mob-preview-box').innerHTML = `<i class="fas fa-camera"></i>`;
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-save"></i> GUARDAR REGISTRO';
         document.getElementById('mob-btn-cancel').classList.add('hidden');
-        document.getElementById('toggle-form').querySelector('h3').innerHTML = '<i class="fas fa-plus-circle"></i> Registrar Nuevo Item';
         document.getElementById('mob-id').value = this.generateNextMalId();
     },
 
@@ -356,9 +347,7 @@ const ui = {
             const id = url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
             if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
         }
-        if (url.includes('dropbox.com')) {
-            return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('&dl=0', '');
-        }
+        if (url.includes('dropbox.com')) return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
         return url;
     },
 
@@ -366,7 +355,7 @@ const ui = {
         const toast = document.getElementById('mob-toast');
         if (!toast) return;
         toast.innerText = msg;
-        toast.style.background = type === 'error' ? 'var(--error)' : '#1e293b';
+        toast.style.background = type === 'error' ? '#ef4444' : '#1e293b';
         toast.classList.remove('hidden');
         setTimeout(() => toast.classList.add('hidden'), 3000);
     },
@@ -375,45 +364,30 @@ const ui = {
         const modal = document.getElementById('mob-modal-overlay');
         const body = document.getElementById('mob-modal-body');
         document.getElementById('mob-modal-title').innerText = "Conexión Airtable";
-        
         body.innerHTML = `
             <div class="field-group">
-                <label>Base ID (debe empezar con 'app...')</label>
-                <input type="text" id="config-base" value="${state.config.baseId}" placeholder="Ej: appXXXXXXXXXXXXXX">
+                <label>Base ID (ej: appXXXXXXXXXXXXXX)</label>
+                <input type="text" id="config-base" value="${state.config.baseId}" placeholder="Copia el app... de la URL">
             </div>
             <div class="field-group">
-                <label>Personal Access Token (debe empezar con 'pat...')</label>
+                <label>Personal Access Token (ej: pat...)</label>
                 <div style="position:relative">
-                    <input type="password" id="config-key" value="${state.config.apiKey}" placeholder="Ej: patXXXXXXXXXXXXXX">
+                    <input type="password" id="config-key" value="${state.config.apiKey}" placeholder="Copia el pat... de Airtable">
                     <button type="button" onclick="const p = document.getElementById('config-key'); p.type = p.type === 'password' ? 'text' : 'password';" 
                             style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#3b5da3; font-size:1.2rem">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
             </div>
-            <p style="font-size:0.65rem; color:#64748b; margin-bottom:15px; line-height:1.2">
-                * Encuentra estos datos en <a href="https://airtable.com/create/tokens" target="_blank" style="color:#3b5da3">Airtable Builders</a>.
-            </p>
             <button id="save-config" class="btn btn-primary-mobile">GUARDAR Y CONECTAR</button>
         `;
-
         modal.classList.remove('hidden');
-
         document.getElementById('save-config').onclick = () => {
-            const bid = document.getElementById('config-base').value.trim();
+            const bid = document.getElementById('config-base').value.trim().toLowerCase();
             const key = document.getElementById('config-key').value.trim();
-            if(!bid || !key) return alert('Por favor, rellene ambos campos.');
-            
-            // Guardar con limpieza extra
-            const finalBid = bid.replace(/\s/g, ''); 
-            const finalKey = key.replace(/\s/g, '');
-
-            localStorage.setItem('airtable_base_id', finalBid);
-            localStorage.setItem('airtable_api_key', finalKey);
-            state.config.baseId = finalBid;
-            state.config.apiKey = finalKey;
-            
-            this.closeModal();
+            if(!bid || !key) return alert('Datos necesarios');
+            localStorage.setItem('airtable_base_id', bid);
+            localStorage.setItem('airtable_api_key', key);
             location.reload(); 
         };
     },
@@ -423,10 +397,9 @@ const ui = {
     },
 
     previewImage(url) {
-        if(!url) return;
-        window.open(url, '_blank');
+        if(url) window.open(url, '_blank');
     }
 };
 
-// Start
+// Auto-Init
 document.addEventListener('DOMContentLoaded', () => ui.init());
