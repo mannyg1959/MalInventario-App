@@ -3,7 +3,7 @@
  * V8: ULTRA-ROBUST URL Converter & Cache Buster
  */
 
-const APP_VERSION = "1.7.2";
+const APP_VERSION = "1.8.0";
 
 const state = {
     config: {
