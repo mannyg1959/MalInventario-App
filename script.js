@@ -105,8 +105,10 @@ const ui = {
     },
 
     openModal(title, html) {
-        document.getElementById('modal-title').innerText = title;
-        document.getElementById('modal-body').innerHTML = html;
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        if (titleEl) titleEl.innerText = title;
+        if (bodyEl) bodyEl.innerHTML = html;
         document.getElementById('modal-container').classList.remove('hidden');
     },
 
@@ -850,7 +852,43 @@ const ui = {
     },
 
     viewConfig(container) {
-        container.innerHTML = `<div class="form-container-styled" style="grid-template-columns:1fr"><div class="form-title-full">Sincronización (Versión ${APP_VERSION})</div><p>Pulsa el botón si las fotos no cargan correctamente.</p><button onclick="ui.autoSetup()" class="btn btn-primary" id="btn-sync">SINCRONIZAR AHORA</button></div>`;
+        container.innerHTML = `
+            <div class="form-container-styled" style="grid-template-columns: 1fr; gap: 20px;">
+                <div class="form-title-full">Configuración de Conexión (v${APP_VERSION})</div>
+                
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <h4 style="margin-top:0; color:#1e293b; margin-bottom:15px">Tus credenciales guardadas:</h4>
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>Base ID</label>
+                        <div style="display:flex; gap:10px">
+                            <input type="text" value="${state.config.baseId}" readonly style="background:#fff; flex:1">
+                            <button onclick="navigator.clipboard.writeText('${state.config.baseId}'); ui.notify('Copiado al portapapeles')" class="btn btn-secondary" style="padding: 5px 15px; background: #fff; border: 1px solid #cbd5e1; height: auto;"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Personal Access Token</label>
+                        <div style="display:flex; gap:10px; position:relative">
+                            <input type="password" id="view-api-key" value="${state.config.apiKey}" readonly style="background:#fff; flex:1">
+                            <button onclick="const p = document.getElementById('view-api-key'); p.type = p.type === 'password' ? 'text' : 'password';" class="btn btn-secondary" style="padding: 5px 15px; background: #fff; border: 1px solid #cbd5e1; height: auto;"><i class="fas fa-eye"></i></button>
+                            <button onclick="navigator.clipboard.writeText('${state.config.apiKey}'); ui.notify('Copiado al portapapeles')" class="btn btn-secondary" style="padding: 5px 15px; background: #fff; border: 1px solid #cbd5e1; height: auto;"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <p style="font-size:0.75rem; color:#64748b; margin-top:15px">
+                        * Copia estos datos para usarlos en tu versión móvil.
+                    </p>
+                </div>
+
+                <div style="background: #fdfbe7; padding: 20px; border-radius: 12px; border: 1px solid #fef3c7;">
+                    <h4 style="margin-top:0; color:#92400e; margin-bottom:10px">Mantenimiento de Base de Datos</h4>
+                    <p style="font-size:0.85rem; color:#b45309">Si has añadido tablas o las fotos no cargan, pulsa el botón para sincronizar la estructura.</p>
+                    <button onclick="ui.autoSetup()" class="btn btn-primary" id="btn-sync" style="background:#d97706; margin-top:10px">SINCRONIZAR ESTRUCTURA</button>
+                </div>
+
+                <div style="text-align:center">
+                    <button onclick="localStorage.clear(); location.reload();" class="btn btn-secondary" style="color:#ef4444; border-color:#fca5a5">CERRAR SESIÓN / LIMPIAR DATOS</button>
+                </div>
+            </div>
+        `;
     },
 
     async autoSetup() {
