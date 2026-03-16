@@ -291,14 +291,29 @@ body {
 }
 
 .search-bar {
-    background: white;
-    padding: 12px 16px;
-    border-radius: 50px;
+    background: var(--white);
+    padding: 8px 14px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     border: 1px solid #e2e8f0;
+}
+
+.category-filter {
+    margin-top: 8px;
+}
+
+.category-filter select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--navy-blue);
+    background: #f8fafc;
 }
 
 .search-bar i {
@@ -403,22 +418,26 @@ body {
 .asset-id {
     font-weight: 900;
     color: var(--primary-color);
-    font-size: 0.6rem;
-    background: #eff6ff;
-    padding: 0px 4px;
-    border-radius: 3px;
+    font-size: 0.95rem; /* Aún más grande */
+    background: #dbeafe; /* Fondo más fuerte */
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin-bottom: 2px;
 }
 
 .card-title {
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.7rem; /* Aún más pequeña */
     display: block;
-    color: var(--navy-blue);
-    line-height: 1;
+    color: #334155;
+    line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px;
+    max-width: 130px;
+    text-transform: uppercase;
 }
 
 .card-meta {

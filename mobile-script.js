@@ -124,9 +124,18 @@ const ui = {
                 state.brands.map(b => `<option value="${b}">${b}</option>`).join('');
         }
 
+        // Use state.categories for the form select
         const catSel = document.getElementById('mob-cat');
         if (catSel) {
             catSel.innerHTML = state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        // Dynamically populate filter category select from existing equipments
+        const filterCatSelect = document.getElementById('mob-filter-cat');
+        if (filterCatSelect) {
+            const uniqueCategories = [...new Set(state.equipments.map(a => a.fields['Categoría']).filter(Boolean))].sort();
+            filterCatSelect.innerHTML = '<option value="">-- Todas las Categorías --</option>' + 
+                uniqueCategories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         const statusSel = document.getElementById('mob-status');
@@ -141,6 +150,7 @@ const ui = {
         
         try {
             state.equipments = await api.getAll('Assets');
+            this.populateSelects(); // Re-populate selects to update filter categories
             this.renderList();
         } catch (e) {
             const is404 = e.message.includes('404') || e.message.includes('NOT_FOUND');
@@ -157,15 +167,25 @@ const ui = {
 
     renderList() {
         const listContainer = document.getElementById('mob-inventory-list');
-        const countLabel = document.getElementById('items-count');
+        const itemsCount = document.getElementById('items-count');
         if (!listContainer) return;
 
-        const filtered = state.equipments.filter(e => {
-            const search = (state.searchQuery || '').toLowerCase();
-            return (e.fields.ID || '').toLowerCase().includes(search) ||
-                   (e.fields.Marca || '').toLowerCase().includes(search) ||
-                   (e.fields.Modelo || '').toLowerCase().includes(search) ||
-                   (e.fields['Número de Serie'] || '').toLowerCase().includes(search);
+        const searchTerm = document.getElementById('mob-search')?.value.toLowerCase() || '';
+        const filterCat = document.getElementById('mob-filter-cat')?.value || '';
+
+        const filtered = state.equipments.filter(asset => {
+            const fields = asset.fields;
+            const matchesSearch = (
+                (fields.ID || '').toLowerCase().includes(searchTerm) ||
+                (fields.Marca || '').toLowerCase().includes(searchTerm) ||
+                (fields.Modelo || '').toLowerCase().includes(searchTerm) ||
+                (fields['Número de Serie'] || '').toLowerCase().includes(searchTerm) ||
+                (fields.Categoría || '').toLowerCase().includes(searchTerm)
+            );
+            
+            const matchesCategory = filterCat === '' || fields.Categoría === filterCat;
+            
+            return matchesSearch && matchesCategory;
         });
 
         filtered.sort((a, b) => {
@@ -174,7 +194,7 @@ const ui = {
             return idB - idA;
         });
 
-        if (countLabel) countLabel.innerText = `${filtered.length} EQUIPOS ENCONTRADOS`;
+        if (itemsCount) itemsCount.innerText = `${filtered.length} EQUIPOS ENCONTRADOS`;
 
         if (filtered.length === 0) {
             listContainer.innerHTML = '<div class="loader-container"><p>No se encontraron resultados.</p></div>';
@@ -261,9 +281,17 @@ const ui = {
         const searchInp = document.getElementById('mob-search');
         if (searchInp) {
             searchInp.oninput = (e) => {
-                state.searchQuery = e.target.value;
+                state.searchQuery = e.target.value; // This line is now redundant if renderList uses direct input value
                 this.renderList();
             };
+        }
+
+        if (document.getElementById('mob-search')) {
+            document.getElementById('mob-search').oninput = () => this.renderList();
+        }
+
+        if (document.getElementById('mob-filter-cat')) {
+            document.getElementById('mob-filter-cat').onchange = () => this.renderList();
         }
 
         if (document.getElementById('btn-refresh')) document.getElementById('btn-refresh').onclick = () => this.refreshInventory();
