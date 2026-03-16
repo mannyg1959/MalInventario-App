@@ -49,10 +49,29 @@ const api = {
     async create(table, fields) { return await this.request(`/${encodeURIComponent(table)}`, 'POST', { fields }); },
     async update(table, id, fields) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'PATCH', { fields }); },
     async delete(table, id) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'DELETE'); },
-    async getTables() { return await this.request('/tables', 'GET', null, true); }
+    async getTables() { return await this.request('/tables', 'GET', null, true); },
+    // Nueva función para subir archivos binarios directamente
+    async uploadAttachment(recordId, fieldName, fileData) {
+        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
+        const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
+        const url = `https://content.airtable.com/v0/${cleanBaseId}/${recordId}/${fieldName}/uploadAttachment`;
+        const headers = { 
+            'Authorization': `Bearer ${cleanApiKey}`, 
+            'Content-Type': 'application/json' 
+        };
+        const response = await fetch(url, { 
+            method: 'POST', 
+            headers, 
+            body: JSON.stringify(fileData) 
+        });
+        if (!response.ok) throw new Error('Error al subir imagen');
+        return await response.json();
+    }
 };
 
 const ui = {
+    // ... rest of ui object
+    tempFileData: null, // Para guardar info del archivo capturado
     init() {
         this.bindEvents();
         this.populateSelects(); // Llenar con defaults primero
@@ -65,7 +84,6 @@ const ui = {
 
     async loadInitialData() {
         try {
-            // Intentamos cargar metadatos pero si falla no bloqueamos la app
             await this.refreshMetadata().catch(e => console.warn("Usando categorías por defecto"));
             await this.refreshInventory();
         } catch (e) {
@@ -130,10 +148,9 @@ const ui = {
                 <div class="loader-container">
                     <p style="font-weight:bold; color:#1e293b">Error de Conexión</p>
                     <p style="font-size:0.75rem; color:#ef4444; margin: 10px 0;">
-                        ${is404 ? 'No se encuentra la Base de Datos o la tabla Assets. Verifica que el Base ID sea correcto (debe empezar con app...).' : e.message}
+                        ${is404 ? 'No se encuentra la Base de Datos o la tabla Assets. Verifica que el Base ID sea correcto.' : e.message}
                     </p>
-                    <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile" style="background:#3b5da3; margin-top:10px">REVISAR CONFIGURACIÓN</button>
-                    <p style="font-size:0.6rem; margin-top:15px; opacity:0.7">Tip: Copia el Base ID directamente desde la URL de tu navegador en PC.</p>
+                    <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile">REVISAR CONFIGURACIÓN</button>
                 </div>`;
         }
     },
@@ -159,6 +176,11 @@ const ui = {
 
         if (countLabel) countLabel.innerText = `${filtered.length} EQUIPOS ENCONTRADOS`;
 
+        if (filtered.length === 0) {
+            listContainer.innerHTML = '<div class="loader-container"><p>No se encontraron resultados.</p></div>';
+            return;
+        }
+
         listContainer.innerHTML = filtered.map(e => {
             const img = e.fields.Foto?.[0]?.url || '';
             const status = e.fields.Estado || 'Disponible';
@@ -178,17 +200,17 @@ const ui = {
                             <span class="badge ${statusClass}">${status}</span>
                         </div>
                         <div class="card-meta">
-                            <i class="fas fa-barcode"></i> ${(e.fields['Número de Serie'] || 'S/N').slice(0,20)}
+                            <i class="fas fa-barcode"></i> ${(e.fields['Número de Serie'] || 'S/N').slice(0,25)}
                             <br>
                             <i class="fas fa-tag"></i> ${e.fields.Categoría || '-'}
                         </div>
                         <div class="card-footer">
                             <div class="card-date">${e.fields['Fecha de Compra'] || '-'}</div>
                             <div class="card-actions">
-                                <button class="action-dot action-edit" onclick="ui.editAsset('${e.id}')">
+                                <button class="action-dot action-edit" onclick="ui.editAsset('${e.id}')" title="Editar">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button class="action-dot action-delete" onclick="ui.deleteAsset('${e.id}')">
+                                <button class="action-dot action-delete" onclick="ui.deleteAsset('${e.id}')" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -247,6 +269,33 @@ const ui = {
         if (document.getElementById('btn-refresh')) document.getElementById('btn-refresh').onclick = () => this.refreshInventory();
         if (document.getElementById('btn-config')) document.getElementById('btn-config').onclick = () => this.showConfigModal();
         if (document.getElementById('close-mob-modal')) document.getElementById('close-mob-modal').onclick = () => this.closeModal();
+
+        // Lógica de archivos desde dispositivo
+        const fileInput = document.getElementById('mob-file-input');
+        if (fileInput) {
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('mob-preview-box');
+                    preview.innerHTML = `<img src="${event.target.result}" style="width:100%; height:100%; object-fit:contain">`;
+                    
+                    // Extraer solo la parte base64 (sin el prefijo 'data:image/jpeg;base64,')
+                    const base64Data = event.target.result.split(',')[1];
+                    
+                    this.tempFileData = {
+                        contentType: file.type,
+                        file: base64Data,
+                        filename: `foto_${Date.now()}.${file.name.split('.').pop()}`
+                    };
+                    
+                    this.showToast('📸 Foto capturada');
+                };
+                reader.readAsDataURL(file);
+            };
+        }
     },
 
     async saveAsset() {
@@ -269,25 +318,34 @@ const ui = {
 
             const imgUrl = this.formatImageUrl(document.getElementById('mob-img').value);
             if (imgUrl) fields['Foto'] = [{ url: imgUrl }];
+            else fields['Foto'] = null; // Limpiar foto si se borra la URL
 
-            if (state.currentEditId) {
-                await api.update('Assets', state.currentEditId, fields);
-                this.showToast('✅ Actualizado');
+            let recordId = state.currentEditId;
+            if (recordId) {
+                await api.update('Assets', recordId, fields);
+                this.showToast('✅ Registro Actualizado');
             } else {
                 fields['ID'] = this.generateNextMalId();
-                await api.create('Assets', fields);
-                this.showToast('✅ Registrado');
+                const newRecord = await api.create('Assets', fields);
+                recordId = newRecord.id;
+                this.showToast('✅ Registro Guardado');
+            }
+
+            // --- NUEVA SUBIDA DIRECTA DE IMAGEN ---
+            if (this.tempFileData && recordId) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SUBIENDO IMAGEN...';
+                await api.uploadAttachment(recordId, 'Foto', this.tempFileData);
+                this.tempFileData = null; // Limpiar después de subir
             }
 
             this.resetForm();
             await this.refreshInventory();
-            document.getElementById('asset-form-container').classList.add('hidden');
-            document.getElementById('toggle-form').classList.remove('open');
         } catch (e) {
             this.showToast('❌ Error al guardar', 'error');
+            console.error(e);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = originalText;
+            btn.innerHTML = state.currentEditId ? '<i class="fas fa-check"></i> ACTUALIZAR ITEM' : '<i class="fas fa-save"></i> GUARDAR REGISTRO';
         }
     },
 
@@ -296,9 +354,11 @@ const ui = {
         if (!asset) return;
         state.currentEditId = id;
         
+        // Abrir formulario
         document.getElementById('asset-form-container').classList.remove('hidden');
         document.getElementById('toggle-form').classList.add('open');
 
+        // Llenar campos
         document.getElementById('mob-id').value = asset.fields.ID || '';
         document.getElementById('mob-brand').value = asset.fields.Marca || '';
         document.getElementById('mob-sn').value = asset.fields['Número de Serie'] || '';
@@ -306,33 +366,51 @@ const ui = {
         document.getElementById('mob-status').value = asset.fields.Estado || '';
         document.getElementById('mob-purchase').value = asset.fields['Fecha de Compra'] || '';
         document.getElementById('mob-desc').value = asset.fields.Descripción || '';
+        
         const img = asset.fields.Foto?.[0]?.url || '';
         document.getElementById('mob-img').value = img;
         
         const preview = document.getElementById('mob-preview-box');
-        preview.innerHTML = img ? `<img src="${img}">` : `<i class="fas fa-camera"></i>`;
+        preview.innerHTML = img ? `<img src="${img}">` : `<i class="fas fa-camera"></i><p>Pega un enlace abajo</p>`;
 
+        // UI Feedback
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-check"></i> ACTUALIZAR ITEM';
         document.getElementById('mob-btn-cancel').classList.remove('hidden');
+        
+        // Scroll al formulario
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     async deleteAsset(id) {
-        if (!confirm('¿Eliminar equipo?')) return;
+        if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
         try {
             await api.delete('Assets', id);
-            this.showToast('🗑️ Eliminado');
+            this.showToast('🗑️ Registro Eliminado');
+            
+            // Si estábamos editando este mismo equipo, resetear formulario
+            if (state.currentEditId === id) this.resetForm();
+            
             await this.refreshInventory();
-        } catch (e) {}
+        } catch (e) {
+            this.showToast('❌ Error al eliminar', 'error');
+            console.error(e);
+        }
     },
 
     resetForm() {
         state.currentEditId = null;
+        this.tempFileData = null; // Limpiar binario
         document.getElementById('mobile-asset-form').reset();
-        document.getElementById('mob-preview-box').innerHTML = `<i class="fas fa-camera"></i>`;
+        document.getElementById('mob-preview-box').innerHTML = `<i class="fas fa-camera"></i><p>Pega un enlace abajo</p>`;
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-save"></i> GUARDAR REGISTRO';
         document.getElementById('mob-btn-cancel').classList.add('hidden');
         document.getElementById('mob-id').value = this.generateNextMalId();
+
+        // Regresar al estado inicial: Cerrar el panel del formulario
+        const container = document.getElementById('asset-form-container');
+        const toggle = document.getElementById('toggle-form');
+        if (container) container.classList.add('hidden');
+        if (toggle) toggle.classList.remove('open');
     },
 
     generateNextMalId() {
@@ -374,7 +452,7 @@ const ui = {
                 <div style="position:relative">
                     <input type="password" id="config-key" value="${state.config.apiKey}" placeholder="Copia el pat... de Airtable">
                     <button type="button" onclick="const p = document.getElementById('config-key'); p.type = p.type === 'password' ? 'text' : 'password';" 
-                            style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#3b5da3; font-size:1.2rem">
+                            style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#3b5da3; font-size:1.2rem; cursor:pointer">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
@@ -400,6 +478,8 @@ const ui = {
         if(url) window.open(url, '_blank');
     }
 };
+
+window.ui = ui; // Exponer ui globalmente para manejar los onclick del HTML
 
 // Auto-Init
 document.addEventListener('DOMContentLoaded', () => ui.init());

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="mobile-style.css?v=180">
+    <link rel="stylesheet" href="mobile-style.css?v=185">
 </head>
 
 <body>
@@ -53,11 +53,15 @@
                         <div class="form-row-group">
                             <!-- Image Selection / Preview -->
                             <div class="field-group image-picker">
-                                <label>Previsualización de Foto</label>
-                                <div class="img-preview-box" id="mob-preview-box">
+                                <label>Foto del Equipo</label>
+                                <div class="img-preview-box" id="mob-preview-box" onclick="document.getElementById('mob-file-input').click()">
                                     <i class="fas fa-camera"></i>
-                                    <p>Pegue un enlace abajo</p>
+                                    <p>Toca para tomar foto o subir</p>
                                 </div>
+                                <input type="file" id="mob-file-input" accept="image/*" capture="environment" style="display:none">
+                                <button type="button" class="btn-upload-label" onclick="document.getElementById('mob-file-input').click()">
+                                    <i class="fas fa-upload"></i> SELECCIONAR DESDE DISPOSITIVO
+                                </button>
                             </div>
 
                             <div class="fields-grid">
@@ -161,7 +165,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="mobile-script.js?v=180"></script>
+    <script src="mobile-script.js?v=185"></script>
 </body>
 
 </html>
