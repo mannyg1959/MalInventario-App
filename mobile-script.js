@@ -120,6 +120,14 @@ const ui = {
             }
 
             if (assetTable) {
+                // Detección inteligente del campo de asignación (Linked Record a Empleados)
+                const assignField = assetTable.fields.find(f => 
+                    (f.type === 'multipleRecordLinks') && 
+                    f.options?.foreignTableId === employeesMeta?.id
+                );
+                state.assetAssignmentField = assignField ? assignField.name : 'Asignado a';
+                console.log("Columna de asignación detectada:", state.assetAssignmentField);
+
                 const catField = assetTable.fields.find(f => f.name === 'Categoría');
                 if (catField?.options?.choices) {
                     state.categories = catField.options.choices.map(c => c.name);
@@ -165,7 +173,7 @@ const ui = {
         const employeeSel = document.getElementById('mob-assignee');
         if (employeeSel) {
             employeeSel.innerHTML = '<option value="">-- Sin Asignar --</option>' + 
-                state.employees.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
+                state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
         }
     },
 
@@ -174,8 +182,13 @@ const ui = {
         listContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div><p>Sincronizando...</p></div>';
         
         try {
-            state.equipments = await api.getAll('Assets');
-            this.populateSelects(); // Re-populate selects to update filter categories
+            const [assets, assignments] = await Promise.all([
+                api.getAll('Assets'),
+                api.getAll('Asignaciones')
+            ]);
+            state.equipments = assets;
+            state.assignments = assignments;
+            this.populateSelects();
             this.renderList();
         } catch (e) {
             const is404 = e.message.includes('404') || e.message.includes('NOT_FOUND');
@@ -365,7 +378,6 @@ const ui = {
                 'Categoría': document.getElementById('mob-cat').value,
                 'Número de Serie': document.getElementById('mob-sn').value,
                 'Estado': document.getElementById('mob-status').value,
-                'Asignado a': document.getElementById('mob-assignee').value,
                 'Descripción': document.getElementById('mob-desc').value,
                 'Fecha de Compra': document.getElementById('mob-purchase').value || null,
                 'Nombre': `${document.getElementById('mob-brand').value} Genérico`
@@ -373,7 +385,14 @@ const ui = {
 
             const imgUrl = this.formatImageUrl(document.getElementById('mob-img').value);
             if (imgUrl) fields['Foto'] = [{ url: imgUrl }];
-            else fields['Foto'] = null; // Limpiar foto si se borra la URL
+            else fields['Foto'] = null;
+
+            const selectedEmployeeId = document.getElementById('mob-assignee').value;
+            const currentAssignment = (state.assignments || []).find(a => a.fields.asset?.[0] === state.currentEditId);
+
+            // Ajustar estado automáticamente si no se cambió manualmente
+            if (selectedEmployeeId && fields['Estado'] === 'Disponible') fields['Estado'] = 'Asignado';
+            else if (!selectedEmployeeId && fields['Estado'] === 'Asignado') fields['Estado'] = 'Disponible';
 
             let recordId = state.currentEditId;
             if (recordId) {
@@ -386,6 +405,26 @@ const ui = {
                 this.showToast('✅ Registro Guardado');
             }
 
+            // --- GESTIÓN DE TABLA ASIGNACIONES (Garantizar Coherencia) ---
+            const isAsignado = (fields['Estado'] === 'Asignado');
+
+            if (isAsignado && selectedEmployeeId) {
+                // Si el estado es Asignado y hay un empleado, aseguramos que exista la asignación
+                if (!currentAssignment || currentAssignment.fields.employee?.[0] !== selectedEmployeeId) {
+                    if (currentAssignment) await api.delete('Asignaciones', currentAssignment.id);
+                    await api.create('Asignaciones', {
+                        'ID Asignación': `ASIG-${recordId.slice(-4)}-${Date.now().toString().slice(-4)}`,
+                        'asset': [recordId],
+                        'employee': [selectedEmployeeId],
+                        'assignmentDate': new Date().toISOString().split('T')[0]
+                    });
+                }
+            } else if (currentAssignment) {
+                // Si el estado NO es 'Asignado', eliminamos cualquier asignación previa
+                await api.delete('Asignaciones', currentAssignment.id);
+            }
+            // -------------------------------------------------------------
+
             // --- NUEVA SUBIDA DIRECTA DE IMAGEN ---
             if (this.tempFileData && recordId) {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SUBIENDO IMAGEN...';
@@ -396,8 +435,9 @@ const ui = {
             this.resetForm();
             await this.refreshInventory();
         } catch (e) {
-            this.showToast('❌ Error al guardar', 'error');
-            console.error(e);
+            const errorMsg = e.message || 'Error desconocido';
+            this.showToast(`❌ Error: ${errorMsg}`, 'error');
+            console.error("Detalle del error:", e);
         } finally {
             btn.disabled = false;
             btn.innerHTML = state.currentEditId ? '<i class="fas fa-check"></i> ACTUALIZAR ITEM' : '<i class="fas fa-save"></i> GUARDAR REGISTRO';
@@ -417,9 +457,12 @@ const ui = {
         document.getElementById('mob-id').value = asset.fields.ID || '';
         document.getElementById('mob-brand').value = asset.fields.Marca || '';
         document.getElementById('mob-sn').value = asset.fields['Número de Serie'] || '';
-        document.getElementById('mob-cat').value = asset.fields.Categoría || '';
         document.getElementById('mob-status').value = asset.fields.Estado || '';
-        document.getElementById('mob-assignee').value = asset.fields['Asignado a'] || '';
+        
+        // Cargar asignación desde la tabla separada (como en Desktop)
+        const assignment = (state.assignments || []).find(a => a.fields.asset?.[0] === id);
+        document.getElementById('mob-assignee').value = assignment ? assignment.fields.employee?.[0] : '';
+        
         document.getElementById('mob-purchase').value = asset.fields['Fecha de Compra'] || '';
         document.getElementById('mob-desc').value = asset.fields.Descripción || '';
         
@@ -433,8 +476,13 @@ const ui = {
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-check"></i> ACTUALIZAR ITEM';
         document.getElementById('mob-btn-cancel').classList.remove('hidden');
         
-        // Scroll al formulario
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Scroll al formulario (contenedor principal móvil)
+        document.querySelector('.mobile-main').scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Enfocar el primer campo usable (Marca)
+        setTimeout(() => {
+            document.getElementById('mob-brand').focus();
+        }, 300);
     },
 
     async deleteAsset(id) {

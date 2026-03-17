@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MalInventario Móvil - Toma de Inventario</title>
 
     <!-- PWA & Mobile Optimization -->
@@ -16,7 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="mobile-style.css?v=193">
+    <link rel="stylesheet" href="mobile-style.css?v=201">
 </head>
 
 <body>
@@ -54,12 +55,15 @@
                             <!-- Image Selection / Preview -->
                             <div class="field-group image-picker">
                                 <label>Foto del Equipo</label>
-                                <div class="img-preview-box" id="mob-preview-box" onclick="document.getElementById('mob-file-input').click()">
+                                <div class="img-preview-box" id="mob-preview-box"
+                                    onclick="document.getElementById('mob-file-input').click()">
                                     <i class="fas fa-camera"></i>
                                     <p>Toca para tomar foto o subir</p>
                                 </div>
-                                <input type="file" id="mob-file-input" accept="image/*" capture="environment" style="display:none">
-                                <button type="button" class="btn-upload-label" onclick="document.getElementById('mob-file-input').click()">
+                                <input type="file" id="mob-file-input" accept="image/*" capture="environment"
+                                    style="display:none">
+                                <button type="button" class="btn-upload-label"
+                                    onclick="document.getElementById('mob-file-input').click()">
                                     <i class="fas fa-upload"></i> SELECCIONAR DESDE DISPOSITIVO
                                 </button>
                             </div>
@@ -110,7 +114,8 @@
 
                             <div class="field-group full-width">
                                 <label>Descripción / Specs</label>
-                                <textarea id="mob-desc" rows="2" placeholder="Ej: i5, 16GB RAM, SSD 512GB..."></textarea>
+                                <textarea id="mob-desc" rows="2"
+                                    placeholder="Ej: i5, 16GB RAM, SSD 512GB..."></textarea>
                             </div>
 
                             <button type="submit" id="mob-btn-save" class="btn btn-primary-mobile">
@@ -157,7 +162,8 @@
 
         <!-- Fixed Bottom Bar -->
         <div class="bottom-nav">
-            <button class="btn-scroll-top" onclick="document.querySelector('.mobile-main').scrollTo({top: 0, behavior: 'smooth'})">
+            <button class="btn-scroll-top"
+                onclick="document.querySelector('.mobile-main').scrollTo({top: 0, behavior: 'smooth'})">
                 <i class="fas fa-arrow-up"></i> VOLVER AL INICIO
             </button>
         </div>
@@ -177,7 +183,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="mobile-script.js?v=195"></script>
+    <script src="mobile-script.js?v=206"></script>
 </body>
 
 </html>
