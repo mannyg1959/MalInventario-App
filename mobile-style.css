@@ -411,20 +411,34 @@ body {
 .card-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: -2px;
+    align-items: flex-start; /* Cambiado de center para que el bloque de estado suba */
+    margin-bottom: 2px;
+}
+
+.card-status-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.card-category-tag {
+    font-size: 0.65rem;
+    font-weight: 800; /* Negrita */
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: right;
 }
 
 .asset-id {
     font-weight: 900;
     color: var(--primary-color);
-    font-size: 0.95rem; /* Aún más grande */
-    background: #dbeafe; /* Fondo más fuerte */
-    padding: 3px 8px;
-    border-radius: 6px;
+    font-size: 0.75rem; /* Reducido de 0.95rem */
+    background: #dbeafe;
+    padding: 2px 6px;
+    border-radius: 4px;
     letter-spacing: 0.5px;
     display: inline-block;
-    margin-bottom: 2px;
 }
 
 .card-title {
@@ -443,16 +457,9 @@ body {
 .card-meta {
     font-size: 0.65rem;
     color: var(--text-muted);
-    display: flex;
-    flex-direction: column;
-    gap: 0px; /* Espacio mínimo */
+    display: block;
     margin-top: 1px;
-}
-
-.card-meta i {
-    color: var(--primary-color);
-    width: 10px;
-    font-size: 0.6rem;
+    font-family: monospace;
 }
 
 .card-footer {

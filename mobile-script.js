@@ -217,12 +217,13 @@ const ui = {
                                 <span class="asset-id">${e.fields.ID || '-'}</span>
                                 <span class="card-title">${e.fields.Marca || ''} ${e.fields.Modelo || ''}</span>
                             </div>
-                            <span class="badge ${statusClass}">${status}</span>
+                            <div class="card-status-block">
+                                <span class="badge ${statusClass}">${status}</span>
+                                <span class="card-category-tag">${e.fields.Categoría || '-'}</span>
+                            </div>
                         </div>
                         <div class="card-meta">
-                            <i class="fas fa-barcode"></i> ${(e.fields['Número de Serie'] || 'S/N').slice(0,25)}
-                            <br>
-                            <i class="fas fa-tag"></i> ${e.fields.Categoría || '-'}
+                            ${(e.fields['Número de Serie'] || 'S/N').slice(0,25)}
                         </div>
                         <div class="card-footer">
                             <div class="card-date">${e.fields['Fecha de Compra'] || '-'}</div>
