@@ -11,6 +11,7 @@ const state = {
     brands: [],
     categories: ['Laptop', 'Desktop', 'Monitor', 'Periférico', 'Móvil', 'Otro'],
     statuses: ['Disponible', 'Asignado', 'Reparación', 'Baja'],
+    employees: [], // Nueva lista para empleados
     currentEditId: null,
     searchQuery: ''
 };
@@ -101,6 +102,23 @@ const ui = {
                 state.brands = brandsTable.map(b => b.fields.Nombre || b.fields.Name).filter(Boolean).sort();
             }
 
+            // Cargar Empleados desde la tabla 'Empleados'
+            const employeesTable = await api.getAll('Empleados');
+            const employeesMeta = meta.tables.find(t => t.name === 'Empleados');
+            // Intentar detectar el nombre del campo principal o usar campos comunes
+            const employeeNameField = employeesMeta?.primaryFieldId ? 
+                employeesMeta.fields.find(f => f.id === employeesMeta.primaryFieldId)?.name : 
+                'Nombre';
+
+            if (employeesTable.length > 0) {
+                state.employees = employeesTable.map(e => {
+                    const fields = e.fields;
+                    // Probar nombre detectado, luego fallbacks comunes
+                    const name = fields[employeeNameField] || fields['Nombre'] || fields['Nombre '] || fields['Name'] || fields['Empleado'] || 'Sin Nombre';
+                    return { id: e.id, name: name.trim() };
+                }).filter(e => e.name && e.name !== 'Sin Nombre').sort((a, b) => a.name.localeCompare(b.name));
+            }
+
             if (assetTable) {
                 const catField = assetTable.fields.find(f => f.name === 'Categoría');
                 if (catField?.options?.choices) {
@@ -141,6 +159,13 @@ const ui = {
         const statusSel = document.getElementById('mob-status');
         if (statusSel) {
             statusSel.innerHTML = state.statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        // Poblar select de Empleados
+        const employeeSel = document.getElementById('mob-assignee');
+        if (employeeSel) {
+            employeeSel.innerHTML = '<option value="">-- Sin Asignar --</option>' + 
+                state.employees.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
         }
     },
 
@@ -340,6 +365,7 @@ const ui = {
                 'Categoría': document.getElementById('mob-cat').value,
                 'Número de Serie': document.getElementById('mob-sn').value,
                 'Estado': document.getElementById('mob-status').value,
+                'Asignado a': document.getElementById('mob-assignee').value,
                 'Descripción': document.getElementById('mob-desc').value,
                 'Fecha de Compra': document.getElementById('mob-purchase').value || null,
                 'Nombre': `${document.getElementById('mob-brand').value} Genérico`
@@ -393,6 +419,7 @@ const ui = {
         document.getElementById('mob-sn').value = asset.fields['Número de Serie'] || '';
         document.getElementById('mob-cat').value = asset.fields.Categoría || '';
         document.getElementById('mob-status').value = asset.fields.Estado || '';
+        document.getElementById('mob-assignee').value = asset.fields['Asignado a'] || '';
         document.getElementById('mob-purchase').value = asset.fields['Fecha de Compra'] || '';
         document.getElementById('mob-desc').value = asset.fields.Descripción || '';
         

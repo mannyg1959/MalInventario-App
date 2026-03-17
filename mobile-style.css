@@ -164,7 +164,7 @@ body {
 .field-group select, 
 .field-group textarea {
     padding: 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #475569; /* Gris Oscuro */
     border-radius: 8px;
     font-size: 1rem; /* Aumentado para evitar zoom en iOS */
     font-family: inherit;
@@ -377,8 +377,8 @@ body {
 .asset-card:has(.badge-baja)::before { background: #64748b; }
 
 .asset-card-img {
-    width: 50px;
-    height: 50px;
+    width: 60px; /* Aumentado de 50px */
+    height: 60px; /* Aumentado de 50px */
     background: #f8fafc;
     border-radius: 6px;
     overflow: hidden;
@@ -586,3 +586,49 @@ body {
 .badge-reparacion { background: #fee2e2; color: #991b1b; }
 
 .hidden { display: none !important; }
+
+/* --- BOTTOM NAVIGATION --- */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    padding: 10px 15px calc(10px + var(--safe-area-bottom));
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-scroll-top {
+    background: var(--navy-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(0,31,63,0.3);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-scroll-top:active {
+    transform: scale(0.95);
+    background: var(--primary-color);
+}
+
+.btn-scroll-top i {
+    font-size: 0.85rem;
+}
+
+/* Padding extra para que el último item no lo tape la barra */
+.inventory-section {
+    padding-bottom: 80px;
+}

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="mobile-style.css?v=189">
+    <link rel="stylesheet" href="mobile-style.css?v=193">
 </head>
 
 <body>
@@ -95,6 +95,12 @@
                                         <!-- Dynamic -->
                                     </select>
                                 </div>
+                                <div class="field-group">
+                                    <label>Asignado a</label>
+                                    <select id="mob-assignee">
+                                        <option value="">-- Sin Asignar --</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="field-group full-width">
@@ -149,8 +155,12 @@
         <!-- Notification Toast -->
         <div id="mob-toast" class="toast hidden"></div>
 
-        <!-- Float FAB if needed -->
-        <!-- <button class="fab-btn"><i class="fas fa-plus"></i></button> -->
+        <!-- Fixed Bottom Bar -->
+        <div class="bottom-nav">
+            <button class="btn-scroll-top" onclick="document.querySelector('.mobile-main').scrollTo({top: 0, behavior: 'smooth'})">
+                <i class="fas fa-arrow-up"></i> VOLVER AL INICIO
+            </button>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -167,7 +177,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="mobile-script.js?v=189"></script>
+    <script src="mobile-script.js?v=195"></script>
 </body>
 
 </html>
