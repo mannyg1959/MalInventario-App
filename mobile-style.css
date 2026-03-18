@@ -598,6 +598,51 @@ select {
     opacity: 0;
 }
 
+.confirm-dialog {
+    background: white;
+    width: 90%;
+    max-width: 320px;
+    margin: auto;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    animation: zoomIn 0.3s ease-out;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.confirm-dialog h3 {
+    color: var(--navy-blue);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.confirm-dialog p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+}
+.confirm-actions .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.85rem;
+}
+
 /* MODALS */
 .modal-overlay-mobile {
     position: fixed;

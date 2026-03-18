@@ -520,7 +520,8 @@ const ui = {
     },
 
     async deleteAsset(id) {
-        if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
+        const wantsToDelete = await ui.confirm('¿Estás seguro de que deseas eliminar este registro permanentemente?', 'Eliminar Equipo');
+        if (!wantsToDelete) return;
         try {
             await api.delete('Assets', id);
             this.showToast('🗑️ Registro Eliminado');
@@ -596,10 +597,13 @@ const ui = {
             <button id="save-config" class="btn btn-primary-mobile">GUARDAR Y CONECTAR</button>
         `;
         modal.classList.remove('hidden');
-        document.getElementById('save-config').onclick = () => {
+        document.getElementById('save-config').onclick = async () => {
             const bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
-            if (!bid || !key) return alert('Datos necesarios');
+            if (!bid || !key) {
+                await ui.alert('Por favor ingresa ambos datos para conectar.', 'Datos Incompletos');
+                return;
+            }
             localStorage.setItem('airtable_base_id', bid);
             localStorage.setItem('airtable_api_key', key);
             location.reload();
@@ -612,6 +616,62 @@ const ui = {
 
     previewImage(url) {
         if (url) window.open(url, '_blank');
+    },
+
+    async confirm(msg, title = "Atención", isDanger = true) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('mob-confirm-overlay');
+            document.getElementById('mob-confirm-title').innerText = title;
+            document.getElementById('mob-confirm-message').innerText = msg;
+            
+            const btnOk = document.getElementById('mob-confirm-ok');
+            if (isDanger) {
+                btnOk.style.backgroundColor = 'var(--error)';
+            } else {
+                btnOk.style.backgroundColor = 'var(--primary-color)';
+            }
+
+            const cleanup = (result) => {
+                overlay.classList.add('hidden');
+                btnOk.onclick = null;
+                document.getElementById('mob-confirm-cancel').onclick = null;
+                resolve(result);
+            };
+
+            btnOk.onclick = () => cleanup(true);
+            document.getElementById('mob-confirm-cancel').onclick = () => cleanup(false);
+
+            overlay.classList.remove('hidden');
+        });
+    },
+
+    async alert(msg, title = "Mensaje") {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('mob-confirm-overlay');
+            document.getElementById('mob-confirm-title').innerText = title;
+            document.getElementById('mob-confirm-message').innerText = msg;
+            
+            const btnOk = document.getElementById('mob-confirm-ok');
+            const originalText = btnOk.innerText;
+            const originalBg = btnOk.style.backgroundColor;
+
+            btnOk.style.backgroundColor = 'var(--primary-color)';
+            btnOk.innerText = "Aceptar";
+            
+            document.getElementById('mob-confirm-cancel').classList.add('hidden');
+
+            const cleanup = () => {
+                overlay.classList.add('hidden');
+                document.getElementById('mob-confirm-cancel').classList.remove('hidden');
+                btnOk.innerText = originalText;
+                btnOk.style.backgroundColor = originalBg;
+                btnOk.onclick = null;
+                resolve();
+            };
+
+            btnOk.onclick = cleanup;
+            overlay.classList.remove('hidden');
+        });
     }
 };
 
@@ -659,14 +719,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Mostrar advertencia antes de salir
-            if (confirm("¿Estás seguro de que deseas salir de la aplicación?")) {
-                // Si acepta salir, retrocedemos nuevamente ya que nuestra "trampa" fue evadida
-                window.history.back(); 
-            } else {
-                // Si el usuario cancela, volvemos a poner la "trampa"
-                window.history.pushState('forward', null, './#app');
-            }
+            // Mostrar advertencia antes de salir usando el custom confirm
+            ui.confirm("¿Estás seguro de que deseas salir de la aplicación?", "Salir de la app").then(wantsToExit => {
+                if (wantsToExit) {
+                    // Si acepta salir, retrocedemos nuevamente ya que nuestra "trampa" fue evadida
+                    window.history.back(); 
+                } else {
+                    // Si el usuario cancela, volvemos a poner la "trampa"
+                    window.history.pushState('forward', null, './#app');
+                }
+            });
         });
     }
 });
