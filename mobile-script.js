@@ -621,30 +621,36 @@ window.ui = ui; // Exponer ui globalmente para manejar los onclick del HTML
 document.addEventListener('DOMContentLoaded', () => {
     ui.init();
 
-    // Interceptar el botón "Atrás" (Retroceso del sistema / navegador)
-    window.history.pushState({ page: "main" }, "", "");
-    window.addEventListener('popstate', function(event) {
-        const formModal = document.getElementById('form-modal-overlay');
-        const configModal = document.getElementById('mob-modal-overlay');
-        
-        // Si hay alguna ventana emergente abierta, el botón atrás simplemente la cierra
-        if (formModal && !formModal.classList.contains('hidden')) {
-            ui.resetForm();
-            window.history.pushState({ page: "main" }, "", "");
-            return;
-        }
-        if (configModal && !configModal.classList.contains('hidden')) {
-            ui.closeModal();
-            window.history.pushState({ page: "main" }, "", "");
-            return;
-        }
+    // Interceptar el botón "Atrás" (Retroceso del sistema / navegador) de manera más confiable usando hash
+    if (window.history && window.history.pushState) {
+        // Empujar un estado falso para tener de donde retroceder
+        window.history.pushState('forward', null, './#app');
 
-        // Mostrar advertencia antes de salir
-        if (confirm("¿Estás seguro de que deseas salir de la aplicación?")) {
-            // Si el usuario acepta, el sistema cierra la PWA o vuelve atrás
-        } else {
-            // Si el usuario cancela, volvemos a poner un estado en el historial para atrapar el próximo toque
-            window.history.pushState({ page: "main" }, "", "");
-        }
-    });
+        window.addEventListener('popstate', function(event) {
+            const formModal = document.getElementById('form-modal-overlay');
+            const configModal = document.getElementById('mob-modal-overlay');
+            
+            // Si hay alguna ventana emergente abierta, el botón atrás simplemente la cierra
+            if (formModal && !formModal.classList.contains('hidden')) {
+                ui.resetForm();
+                // Volvemos a empujar el estado para seguir atrapando el botón "Atrás"
+                window.history.pushState('forward', null, './#app');
+                return;
+            }
+            if (configModal && !configModal.classList.contains('hidden')) {
+                ui.closeModal();
+                window.history.pushState('forward', null, './#app');
+                return;
+            }
+
+            // Mostrar advertencia antes de salir
+            if (confirm("¿Estás seguro de que deseas salir de la aplicación?")) {
+                // Si acepta salir, retrocedemos nuevamente ya que nuestra "trampa" fue evadida
+                window.history.back(); 
+            } else {
+                // Si el usuario cancela, volvemos a poner la "trampa"
+                window.history.pushState('forward', null, './#app');
+            }
+        });
+    }
 });
