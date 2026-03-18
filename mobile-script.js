@@ -618,4 +618,33 @@ const ui = {
 window.ui = ui; // Exponer ui globalmente para manejar los onclick del HTML
 
 // Auto-Init
-document.addEventListener('DOMContentLoaded', () => ui.init());
+document.addEventListener('DOMContentLoaded', () => {
+    ui.init();
+
+    // Interceptar el botón "Atrás" (Retroceso del sistema / navegador)
+    window.history.pushState({ page: "main" }, "", "");
+    window.addEventListener('popstate', function(event) {
+        const formModal = document.getElementById('form-modal-overlay');
+        const configModal = document.getElementById('mob-modal-overlay');
+        
+        // Si hay alguna ventana emergente abierta, el botón atrás simplemente la cierra
+        if (formModal && !formModal.classList.contains('hidden')) {
+            ui.resetForm();
+            window.history.pushState({ page: "main" }, "", "");
+            return;
+        }
+        if (configModal && !configModal.classList.contains('hidden')) {
+            ui.closeModal();
+            window.history.pushState({ page: "main" }, "", "");
+            return;
+        }
+
+        // Mostrar advertencia antes de salir
+        if (confirm("¿Estás seguro de que deseas salir de la aplicación?")) {
+            // Si el usuario acepta, el sistema cierra la PWA o vuelve atrás
+        } else {
+            // Si el usuario cancela, volvemos a poner un estado en el historial para atrapar el próximo toque
+            window.history.pushState({ page: "main" }, "", "");
+        }
+    });
+});
