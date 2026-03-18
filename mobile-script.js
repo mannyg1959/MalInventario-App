@@ -621,6 +621,22 @@ window.ui = ui; // Exponer ui globalmente para manejar los onclick del HTML
 document.addEventListener('DOMContentLoaded', () => {
     ui.init();
 
+    // Activar Pantalla Completa automáticamente al primer toque del usuario
+    // (Los navegadores bloquean el "FullScreen" a menos que el usuario toque la pantalla)
+    const activateFullScreen = () => {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log("Pantalla completa no soportada o bloqueada:", err.message);
+            });
+        }
+        // Solo necesitamos que se active la primera vez, así que removemos el listener
+        document.removeEventListener('click', activateFullScreen);
+        document.removeEventListener('touchstart', activateFullScreen);
+    };
+
+    document.addEventListener('click', activateFullScreen);
+    document.addEventListener('touchstart', activateFullScreen, { passive: true });
+
     // Interceptar el botón "Atrás" (Retroceso del sistema / navegador) de manera más confiable usando hash
     if (window.history && window.history.pushState) {
         // Empujar un estado falso para tener de donde retroceder
