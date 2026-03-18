@@ -18,22 +18,22 @@ const state = {
 
 const api = {
     async request(path, method = 'GET', data = null, isMeta = false) {
-        if (!state.config.baseId || !state.config.apiKey) { 
+        if (!state.config.baseId || !state.config.apiKey) {
             throw new Error('CONFIG_MISSING');
         }
 
         // Limpieza de espacios pero respetando MAYÚSCULAS/minúsculas
-        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, ''); 
+        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
         const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
-        
+
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
         const url = `${baseUrl}/${cleanBaseId}${path}`;
-        
-        const headers = { 
-            'Authorization': `Bearer ${cleanApiKey}`, 
-            'Content-Type': 'application/json' 
+
+        const headers = {
+            'Authorization': `Bearer ${cleanApiKey}`,
+            'Content-Type': 'application/json'
         };
-        
+
         try {
             const response = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : null });
             const result = await response.json().catch(() => ({}));
@@ -56,14 +56,14 @@ const api = {
         const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
         const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
         const url = `https://content.airtable.com/v0/${cleanBaseId}/${recordId}/${fieldName}/uploadAttachment`;
-        const headers = { 
-            'Authorization': `Bearer ${cleanApiKey}`, 
-            'Content-Type': 'application/json' 
+        const headers = {
+            'Authorization': `Bearer ${cleanApiKey}`,
+            'Content-Type': 'application/json'
         };
-        const response = await fetch(url, { 
-            method: 'POST', 
-            headers, 
-            body: JSON.stringify(fileData) 
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(fileData)
         });
         if (!response.ok) throw new Error('Error al subir imagen');
         return await response.json();
@@ -97,7 +97,7 @@ const ui = {
             const meta = await api.getTables();
             const assetTable = meta.tables.find(t => t.name === 'Assets');
             const brandsTable = await api.getAll('Marcas');
-            
+
             if (brandsTable.length > 0) {
                 state.brands = brandsTable.map(b => b.fields.Nombre || b.fields.Name).filter(Boolean).sort();
             }
@@ -106,8 +106,8 @@ const ui = {
             const employeesTable = await api.getAll('Empleados');
             const employeesMeta = meta.tables.find(t => t.name === 'Empleados');
             // Intentar detectar el nombre del campo principal o usar campos comunes
-            const employeeNameField = employeesMeta?.primaryFieldId ? 
-                employeesMeta.fields.find(f => f.id === employeesMeta.primaryFieldId)?.name : 
+            const employeeNameField = employeesMeta?.primaryFieldId ?
+                employeesMeta.fields.find(f => f.id === employeesMeta.primaryFieldId)?.name :
                 'Nombre';
 
             if (employeesTable.length > 0) {
@@ -121,8 +121,8 @@ const ui = {
 
             if (assetTable) {
                 // Detección inteligente del campo de asignación (Linked Record a Empleados)
-                const assignField = assetTable.fields.find(f => 
-                    (f.type === 'multipleRecordLinks') && 
+                const assignField = assetTable.fields.find(f =>
+                    (f.type === 'multipleRecordLinks') &&
                     f.options?.foreignTableId === employeesMeta?.id
                 );
                 state.assetAssignmentField = assignField ? assignField.name : 'Asignado a';
@@ -138,15 +138,15 @@ const ui = {
                 }
             }
             this.populateSelects();
-        } catch (e) { 
-            console.error("No se pudieron sincronizar categorías:", e); 
+        } catch (e) {
+            console.error("No se pudieron sincronizar categorías:", e);
         }
     },
 
     populateSelects() {
         const brandSel = document.getElementById('mob-brand');
         if (brandSel) {
-            brandSel.innerHTML = '<option value="">-- Seleccionar --</option>' + 
+            brandSel.innerHTML = '<option value="">-- Seleccionar --</option>' +
                 state.brands.map(b => `<option value="${b}">${b}</option>`).join('');
         }
 
@@ -160,8 +160,15 @@ const ui = {
         const filterCatSelect = document.getElementById('mob-filter-cat');
         if (filterCatSelect) {
             const uniqueCategories = [...new Set(state.equipments.map(a => a.fields['Categoría']).filter(Boolean))].sort();
-            filterCatSelect.innerHTML = '<option value="">-- Todas las Categorías --</option>' + 
+            filterCatSelect.innerHTML = '<option value="">-- Categorías --</option>' +
                 uniqueCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        // Poblar filtro de Asignaciones (Empleados)
+        const filterAsigSelect = document.getElementById('mob-filter-assignee');
+        if (filterAsigSelect) {
+            filterAsigSelect.innerHTML = '<option value="">-- Asignaciones --</option>' +
+                state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
         }
 
         const statusSel = document.getElementById('mob-status');
@@ -172,7 +179,7 @@ const ui = {
         // Poblar select de Empleados
         const employeeSel = document.getElementById('mob-assignee');
         if (employeeSel) {
-            employeeSel.innerHTML = '<option value="">-- Sin Asignar --</option>' + 
+            employeeSel.innerHTML = '<option value="">-- Sin Asignar --</option>' +
                 state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
         }
     },
@@ -180,7 +187,7 @@ const ui = {
     async refreshInventory() {
         const listContainer = document.getElementById('mob-inventory-list');
         listContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div><p>Sincronizando...</p></div>';
-        
+
         try {
             const [assets, assignments] = await Promise.all([
                 api.getAll('Assets'),
@@ -210,6 +217,7 @@ const ui = {
 
         const searchTerm = document.getElementById('mob-search')?.value.toLowerCase() || '';
         const filterCat = document.getElementById('mob-filter-cat')?.value || '';
+        const filterAsig = document.getElementById('mob-filter-assignee')?.value || '';
 
         const filtered = state.equipments.filter(asset => {
             const fields = asset.fields;
@@ -220,10 +228,17 @@ const ui = {
                 (fields['Número de Serie'] || '').toLowerCase().includes(searchTerm) ||
                 (fields.Categoría || '').toLowerCase().includes(searchTerm)
             );
-            
+
             const matchesCategory = filterCat === '' || fields.Categoría === filterCat;
-            
-            return matchesSearch && matchesCategory;
+
+            // Filtro por Asignación (Empleado)
+            let matchesAsig = true;
+            if (filterAsig) {
+                const asig = (state.assignments || []).find(a => a.fields.asset?.[0] === asset.id);
+                matchesAsig = asig?.fields.employee?.[0] === filterAsig;
+            }
+
+            return matchesSearch && matchesCategory && matchesAsig;
         });
 
         filtered.sort((a, b) => {
@@ -243,7 +258,7 @@ const ui = {
             const img = e.fields.Foto?.[0]?.url || '';
             const status = e.fields.Estado || 'Disponible';
             const statusClass = `badge-${status.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '')}`;
-            
+
             return `
                 <div class="asset-card" data-id="${e.id}">
                     <div class="asset-card-img" onclick="ui.previewImage('${img}')">
@@ -261,7 +276,7 @@ const ui = {
                             </div>
                         </div>
                         <div class="card-meta">
-                            ${(e.fields['Número de Serie'] || 'S/N').slice(0,25)}
+                            ${(e.fields['Número de Serie'] || 'S/N').slice(0, 25)}
                         </div>
                         <div class="card-footer">
                             <div class="card-date">${e.fields['Fecha de Compra'] || '-'}</div>
@@ -281,16 +296,19 @@ const ui = {
     },
 
     bindEvents() {
-        const toggleBtn = document.getElementById('toggle-form');
-        if (toggleBtn) {
-            toggleBtn.onclick = () => {
-                const content = document.getElementById('asset-form-container');
-                content.classList.toggle('hidden');
-                toggleBtn.classList.toggle('open');
-                if (!content.classList.contains('hidden') && !state.currentEditId) {
-                    document.getElementById('mob-id').value = this.generateNextMalId();
-                }
+        const btnNewAsset = document.getElementById('btn-new-asset');
+        if (btnNewAsset) {
+            btnNewAsset.onclick = () => {
+                this.resetForm();
+                document.getElementById('form-modal-title').innerText = "Registrar Nuevo Equipo";
+                document.getElementById('form-modal-overlay').classList.remove('hidden');
+                document.getElementById('mob-id').value = this.generateNextMalId();
             };
+        }
+
+        const closeFormModal = document.getElementById('close-form-modal');
+        if (closeFormModal) {
+            closeFormModal.onclick = () => this.resetForm();
         }
 
         const form = document.getElementById('mobile-asset-form');
@@ -333,6 +351,10 @@ const ui = {
             document.getElementById('mob-filter-cat').onchange = () => this.renderList();
         }
 
+        if (document.getElementById('mob-filter-assignee')) {
+            document.getElementById('mob-filter-assignee').onchange = () => this.renderList();
+        }
+
         if (document.getElementById('btn-refresh')) document.getElementById('btn-refresh').onclick = () => this.refreshInventory();
         if (document.getElementById('btn-config')) document.getElementById('btn-config').onclick = () => this.showConfigModal();
         if (document.getElementById('close-mob-modal')) document.getElementById('close-mob-modal').onclick = () => this.closeModal();
@@ -348,16 +370,20 @@ const ui = {
                 reader.onload = (event) => {
                     const preview = document.getElementById('mob-preview-box');
                     preview.innerHTML = `<img src="${event.target.result}" style="width:100%; height:100%; object-fit:contain">`;
-                    
+
                     // Extraer solo la parte base64 (sin el prefijo 'data:image/jpeg;base64,')
                     const base64Data = event.target.result.split(',')[1];
-                    
+
                     this.tempFileData = {
                         contentType: file.type,
                         file: base64Data,
                         filename: `foto_${Date.now()}.${file.name.split('.').pop()}`
                     };
-                    
+
+                    // Limpiar el campo de URL manual si se captura una foto nueva
+                    const imgInput = document.getElementById('mob-img');
+                    if (imgInput) imgInput.value = '';
+
                     this.showToast('📸 Foto capturada');
                 };
                 reader.readAsDataURL(file);
@@ -374,18 +400,25 @@ const ui = {
         try {
             const fields = {
                 'Marca': document.getElementById('mob-brand').value,
-                'Modelo': 'Genérico', 
+                'Modelo': document.getElementById('mob-model').value || 'Genérico',
                 'Categoría': document.getElementById('mob-cat').value,
                 'Número de Serie': document.getElementById('mob-sn').value,
                 'Estado': document.getElementById('mob-status').value,
                 'Descripción': document.getElementById('mob-desc').value,
                 'Fecha de Compra': document.getElementById('mob-purchase').value || null,
-                'Nombre': `${document.getElementById('mob-brand').value} Genérico`
+                'Nombre': `${document.getElementById('mob-brand').value} ${document.getElementById('mob-model').value || 'Genérico'}`
             };
 
             const imgUrl = this.formatImageUrl(document.getElementById('mob-img').value);
-            if (imgUrl) fields['Foto'] = [{ url: imgUrl }];
-            else fields['Foto'] = null;
+            if (this.tempFileData) {
+                // Si hay un archivo binario pendiente, limpiamos el campo Foto en el update
+                // para que el posterior uploadAttachment sea un reemplazo limpio
+                fields['Foto'] = null;
+            } else if (imgUrl) {
+                fields['Foto'] = [{ url: imgUrl }];
+            } else {
+                fields['Foto'] = null;
+            }
 
             const selectedEmployeeId = document.getElementById('mob-assignee').value;
             const currentAssignment = (state.assignments || []).find(a => a.fields.asset?.[0] === state.currentEditId);
@@ -448,37 +481,38 @@ const ui = {
         const asset = state.equipments.find(e => e.id === id);
         if (!asset) return;
         state.currentEditId = id;
-        
+
         // Abrir formulario
-        document.getElementById('asset-form-container').classList.remove('hidden');
-        document.getElementById('toggle-form').classList.add('open');
+        document.getElementById('form-modal-title').innerText = "Editar Equipo";
+        document.getElementById('form-modal-overlay').classList.remove('hidden');
 
         // Llenar campos
         document.getElementById('mob-id').value = asset.fields.ID || '';
         document.getElementById('mob-brand').value = asset.fields.Marca || '';
+        document.getElementById('mob-model').value = asset.fields.Modelo || '';
         document.getElementById('mob-sn').value = asset.fields['Número de Serie'] || '';
         document.getElementById('mob-status').value = asset.fields.Estado || '';
-        
+
         // Cargar asignación desde la tabla separada (como en Desktop)
         const assignment = (state.assignments || []).find(a => a.fields.asset?.[0] === id);
         document.getElementById('mob-assignee').value = assignment ? assignment.fields.employee?.[0] : '';
-        
+
         document.getElementById('mob-purchase').value = asset.fields['Fecha de Compra'] || '';
         document.getElementById('mob-desc').value = asset.fields.Descripción || '';
-        
+
         const img = asset.fields.Foto?.[0]?.url || '';
         document.getElementById('mob-img').value = img;
-        
+
         const preview = document.getElementById('mob-preview-box');
         preview.innerHTML = img ? `<img src="${img}">` : `<i class="fas fa-camera"></i><p>Pega un enlace abajo</p>`;
 
         // UI Feedback
         document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-check"></i> ACTUALIZAR ITEM';
         document.getElementById('mob-btn-cancel').classList.remove('hidden');
-        
+
         // Scroll al formulario (contenedor principal móvil)
         document.querySelector('.mobile-main').scrollTo({ top: 0, behavior: 'smooth' });
-        
+
         // Enfocar el primer campo usable (Marca)
         setTimeout(() => {
             document.getElementById('mob-brand').focus();
@@ -490,10 +524,10 @@ const ui = {
         try {
             await api.delete('Assets', id);
             this.showToast('🗑️ Registro Eliminado');
-            
+
             // Si estábamos editando este mismo equipo, resetear formulario
             if (state.currentEditId === id) this.resetForm();
-            
+
             await this.refreshInventory();
         } catch (e) {
             this.showToast('❌ Error al eliminar', 'error');
@@ -511,10 +545,8 @@ const ui = {
         document.getElementById('mob-id').value = this.generateNextMalId();
 
         // Regresar al estado inicial: Cerrar el panel del formulario
-        const container = document.getElementById('asset-form-container');
-        const toggle = document.getElementById('toggle-form');
-        if (container) container.classList.add('hidden');
-        if (toggle) toggle.classList.remove('open');
+        const modal = document.getElementById('form-modal-overlay');
+        if (modal) modal.classList.add('hidden');
     },
 
     generateNextMalId() {
@@ -567,10 +599,10 @@ const ui = {
         document.getElementById('save-config').onclick = () => {
             const bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
-            if(!bid || !key) return alert('Datos necesarios');
+            if (!bid || !key) return alert('Datos necesarios');
             localStorage.setItem('airtable_base_id', bid);
             localStorage.setItem('airtable_api_key', key);
-            location.reload(); 
+            location.reload();
         };
     },
 
@@ -579,7 +611,7 @@ const ui = {
     },
 
     previewImage(url) {
-        if(url) window.open(url, '_blank');
+        if (url) window.open(url, '_blank');
     }
 };
 

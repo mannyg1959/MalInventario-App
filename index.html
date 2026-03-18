@@ -43,91 +43,12 @@
 
         <!-- Main Scroll Area -->
         <main class="mobile-main">
-            <!-- Form Section (Collapsible / Top) -->
-            <section id="form-section" class="form-section">
-                <div class="section-header" id="toggle-form">
-                    <h3><i class="fas fa-plus-circle"></i> Registrar Nuevo Item</h3>
-                    <i class="fas fa-chevron-down toggle-icon"></i>
-                </div>
-                <div id="asset-form-container" class="form-content hidden">
-                    <form id="mobile-asset-form">
-                        <div class="form-row-group">
-                            <!-- Image Selection / Preview -->
-                            <div class="field-group image-picker">
-                                <label>Foto del Equipo</label>
-                                <div class="img-preview-box" id="mob-preview-box"
-                                    onclick="document.getElementById('mob-file-input').click()">
-                                    <i class="fas fa-camera"></i>
-                                    <p>Toca para tomar foto o subir</p>
-                                </div>
-                                <input type="file" id="mob-file-input" accept="image/*" capture="environment"
-                                    style="display:none">
-                                <button type="button" class="btn-upload-label"
-                                    onclick="document.getElementById('mob-file-input').click()">
-                                    <i class="fas fa-upload"></i> SELECCIONAR DESDE DISPOSITIVO
-                                </button>
-                            </div>
-
-                            <div class="fields-grid">
-                                <div class="field-group">
-                                    <label>ID MAL (Auto)</label>
-                                    <input type="text" id="mob-id" readonly placeholder="MALXXX">
-                                </div>
-                                <div class="field-group">
-                                    <label>Marca</label>
-                                    <select id="mob-brand" required>
-                                        <option value="">-- Seleccionar --</option>
-                                    </select>
-                                </div>
-                                <div class="field-group">
-                                    <label>Nº de Serie</label>
-                                    <input type="text" id="mob-sn" placeholder="Número de serie">
-                                </div>
-                                <div class="field-group">
-                                    <label>Categoría</label>
-                                    <select id="mob-cat">
-                                        <!-- Dynamic -->
-                                    </select>
-                                </div>
-                                <div class="field-group">
-                                    <label>Fecha Compra</label>
-                                    <input type="date" id="mob-purchase">
-                                </div>
-                                <div class="field-group">
-                                    <label>Estado</label>
-                                    <select id="mob-status">
-                                        <!-- Dynamic -->
-                                    </select>
-                                </div>
-                                <div class="field-group">
-                                    <label>Asignado a</label>
-                                    <select id="mob-assignee">
-                                        <option value="">-- Sin Asignar --</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="field-group full-width">
-                                <label>Enlace Foto (Drive/Dropbox)</label>
-                                <input type="text" id="mob-img" placeholder="https://drive.google.com/...">
-                            </div>
-
-                            <div class="field-group full-width">
-                                <label>Descripción / Specs</label>
-                                <textarea id="mob-desc" rows="2"
-                                    placeholder="Ej: i5, 16GB RAM, SSD 512GB..."></textarea>
-                            </div>
-
-                            <button type="submit" id="mob-btn-save" class="btn btn-primary-mobile">
-                                <i class="fas fa-save"></i> GUARDAR REGISTRO
-                            </button>
-                            <button type="button" id="mob-btn-cancel" class="btn btn-secondary-mobile hidden">
-                                <i class="fas fa-times"></i> CANCELAR EDICIÓN
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+            <!-- New Asset Button -->
+            <div style="padding: 10px 10px 0 10px;">
+                <button type="button" id="btn-new-asset" class="btn btn-primary-mobile" style="margin: 0;">
+                    <i class="fas fa-plus-circle"></i> REGISTRAR NUEVO EQUIPO
+                </button>
+            </div>
 
             <!-- Search & Filters -->
             <section class="filters-section">
@@ -135,10 +56,17 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="mob-search" placeholder="ID, Marca, Serie...">
                 </div>
-                <div class="category-filter">
-                    <select id="mob-filter-cat">
-                        <option value="">-- Todas las Categorías --</option>
-                    </select>
+                <div class="filters-row">
+                    <div class="filter-col">
+                        <select id="mob-filter-cat">
+                            <option value="">-- Categorías --</option>
+                        </select>
+                    </div>
+                    <div class="filter-col">
+                        <select id="mob-filter-assignee">
+                            <option value="">-- Asignaciones --</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -174,7 +102,7 @@
         <div class="modal-mobile">
             <div class="modal-header">
                 <h2 id="mob-modal-title">Configuración</h2>
-                <button id="close-mob-modal" class="close-btn">&times;</button>
+                <button type="button" id="close-mob-modal" class="close-btn">&times;</button>
             </div>
             <div id="mob-modal-body" class="modal-body">
                 <!-- Generic body -->
@@ -182,8 +110,109 @@
         </div>
     </div>
 
+    <!-- Form Modal -->
+    <div id="form-modal-overlay" class="modal-overlay-mobile hidden">
+        <div class="modal-mobile full-screen-modal">
+            <div class="modal-header">
+                <h2 id="form-modal-title">Registrar Nuevo Equipo</h2>
+                <button type="button" id="close-form-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="mobile-asset-form">
+                    <div class="form-row-group">
+                        <!-- Image Selection / Preview -->
+                        <div class="field-group image-picker">
+                            <label>Foto del Equipo</label>
+                            <div class="img-preview-box" id="mob-preview-box"
+                                onclick="document.getElementById('mob-file-input').click()">
+                                <i class="fas fa-camera"></i>
+                                <p>Toca para tomar foto o subir</p>
+                            </div>
+                            <input type="file" id="mob-file-input" accept="image/*" capture="environment"
+                                style="display:none">
+                            <button type="button" class="btn-upload-label"
+                                onclick="document.getElementById('mob-file-input').click()">
+                                <i class="fas fa-upload"></i> SELECCIONAR DESDE DISPOSITIVO
+                            </button>
+                        </div>
+
+                        <div class="fields-grid" style="margin-bottom: 15px;">
+                            <div class="field-group">
+                                <label>ID MAL (Auto)</label>
+                                <input type="text" id="mob-id" readonly placeholder="MALXXX">
+                            </div>
+                            <div class="field-group">
+                                <label>Marca</label>
+                                <select id="mob-brand" required>
+                                    <option value="">-- Seleccionar --</option>
+                                </select>
+                            </div>
+                            <div class="field-group full-width" style="grid-column: 1 / -1;">
+                                <label>Modelo</label>
+                                <input type="text" id="mob-model" placeholder="Ej: EliteBook, G5...">
+                            </div>
+                            <div class="field-group">
+                                <label>Nº de Serie</label>
+                                <input type="text" id="mob-sn" placeholder="Número de serie">
+                            </div>
+                            <div class="field-group">
+                                <label>Categoría</label>
+                                <select id="mob-cat">
+                                    <!-- Dynamic -->
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label>Estado</label>
+                                <select id="mob-status">
+                                    <!-- Dynamic -->
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label>Fecha Compra</label>
+                                <input type="date" id="mob-purchase">
+                            </div>
+                            <div class="field-group full-width" style="grid-column: 1 / -1;">
+                                <label>Asignado a</label>
+                                <select id="mob-assignee">
+                                    <option value="">-- Sin Asignar --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="field-group full-width">
+                            <label>Enlace Foto (Opcional - Drive/Dropbox)</label>
+                            <input type="text" id="mob-img" placeholder="https://drive.google.com/...">
+                        </div>
+
+                        <div class="field-group full-width">
+                            <label>Descripción / Specs</label>
+                            <textarea id="mob-desc" rows="2"
+                                placeholder="Ej: i5, 16GB RAM, SSD 512GB..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="form-modal-footer">
+                <button type="submit" form="mobile-asset-form" id="mob-btn-save" class="btn btn-primary-mobile">
+                    <i class="fas fa-save"></i> GUARDAR REGISTRO
+                </button>
+                <button type="button" id="mob-btn-cancel" class="btn btn-secondary-mobile hidden" style="margin-top: 5px;">
+                    <i class="fas fa-times"></i> CANCELAR EDICIÓN
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="mobile-script.js?v=206"></script>
+</body>
+
+</html>
+</div>
+</div>
+
+<!-- Scripts -->
+<script src="mobile-script.js?v=206"></script>
 </body>
 
 </html>

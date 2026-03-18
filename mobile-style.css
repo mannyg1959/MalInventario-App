@@ -316,19 +316,24 @@ select {
     border: 1px solid #e2e8f0;
 }
 
-.category-filter {
+.filters-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     margin-top: 8px;
 }
 
-.category-filter select {
+.filters-row select {
     width: 100%;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-radius: 10px;
     border: 1px solid #cbd5e1;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--navy-blue);
     background: #f8fafc;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .search-bar i {
@@ -513,19 +518,23 @@ select {
 
 .card-actions {
     display: flex;
-    gap: 4px;
+    gap: 12px;
+    /* Aumentado de 4px para mayor separación */
 }
 
 .action-dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
+    width: 32px;
+    /* Aumentado de 24px */
+    height: 32px;
+    /* Aumentado de 24px */
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #fff;
     border: 1px solid #94a3b8;
-    font-size: 0.65rem;
+    font-size: 0.85rem;
+    /* Aumentado de 0.65rem */
 }
 
 .action-dot:active {
@@ -621,6 +630,51 @@ select {
     to {
         transform: translateY(0);
     }
+}
+
+.full-screen-modal {
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h2 {
+    font-size: 1.2rem;
+    color: var(--navy-blue);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
+    margin-right: -10px;
+    padding-right: 10px;
+}
+
+.form-modal-footer {
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+    background: white;
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .badge {
