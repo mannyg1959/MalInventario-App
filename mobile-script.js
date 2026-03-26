@@ -466,13 +466,13 @@ const ui = {
 
             const imgUrl = this.formatImageUrl(document.getElementById('mob-img').value);
             if (this.tempFileData) {
-                // Si hay un archivo binario pendiente, limpiamos el campo Foto en el update
-                // para que el posterior uploadAttachment sea un reemplazo limpio
-                fields['Foto'] = null;
+                // Lo subimos después mediante update
+                delete fields['Foto'];
             } else if (imgUrl) {
                 fields['Foto'] = [{ url: imgUrl }];
-            } else {
-                fields['Foto'] = null;
+            } else if (state.currentEditId) {
+                // Para limpiar en un update en Airtable, usamos campo vacío
+                fields['Foto'] = [];
             }
 
             const selectedEmployeeId = document.getElementById('mob-assignee').value;
@@ -487,9 +487,11 @@ const ui = {
                 await api.update('Assets', recordId, fields);
                 this.showToast('✅ Registro Actualizado');
             } else {
-                fields['ID'] = this.generateNextMalId();
+                fields['ID'] = document.getElementById('mob-id').value || this.generateNextMalId();
                 const newRecord = await api.create('Assets', fields);
-                recordId = newRecord.id;
+                // Soporta tanto la vieja API (objeto simple) como la nueva (array results)
+                recordId = newRecord.id || (newRecord.records && newRecord.records[0] ? newRecord.records[0].id : null);
+                if (!recordId) throw new Error("Airtable no devolvió un ID válido.");
                 this.showToast('✅ Registro Guardado');
             }
 

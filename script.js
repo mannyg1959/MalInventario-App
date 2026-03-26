@@ -441,8 +441,8 @@ const ui = {
 
                 if (url && (url.startsWith('http'))) {
                     fields['Foto'] = [{ url: url }];
-                } else {
-                    fields['Foto'] = null; // Limpiar si está vacío
+                } else if (editId) {
+                    fields['Foto'] = []; // Vaciar en Airtable en caso de update
                 }
 
                 if (editId) {
