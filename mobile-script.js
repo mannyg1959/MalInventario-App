@@ -58,22 +58,33 @@ const api = {
     async update(table, id, fields) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'PATCH', { fields }); },
     async delete(table, id) { return await this.request(`/${encodeURIComponent(table)}/${id}`, 'DELETE'); },
     async getTables() { return await this.request('/tables', 'GET', null, true); },
-    // Nueva función para subir archivos binarios directamente
+    // Nueva función para subir archivos y obtener URL pública temporal (requerido por Airtable)
     async uploadAttachment(recordId, fieldName, fileData) {
-        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
-        const cleanApiKey = state.config.apiKey.replace(/Bearer\s+/i, '').trim().replace(/\s/g, '');
-        const url = `https://content.airtable.com/v0/${cleanBaseId}/${recordId}/${fieldName}/uploadAttachment`;
-        const headers = {
-            'Authorization': `Bearer ${cleanApiKey}`,
-            'Content-Type': 'application/json'
-        };
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(fileData)
-        });
-        if (!response.ok) throw new Error('Error al subir imagen');
-        return await response.json();
+        try {
+            // Subimos la imagen en base64 a un host público temporal para que Airtable la descargue
+            const formData = new FormData();
+            formData.append('key', '6d207e02198a847aa98d0a2a901485a5'); // FreeImage.host API pública
+            formData.append('action', 'upload');
+            formData.append('source', fileData.file);
+            formData.append('format', 'json');
+
+            const uploadRes = await fetch('https://freeimage.host/api/1/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadRes.ok) throw new Error('Error al subir imagen al servidor temporal');
+            const data = await uploadRes.json();
+            const imageUrl = data.image.url;
+
+            // Ahora actualizamos el registro de Airtable con esa URL
+            return await this.update('Assets', recordId, {
+                [fieldName]: [{ url: imageUrl }]
+            });
+        } catch (err) {
+            console.error("Error uploadAttachment:", err);
+            throw err;
+        }
     }
 };
 
@@ -349,7 +360,10 @@ const ui = {
 
         const closeFormModal = document.getElementById('close-form-modal');
         if (closeFormModal) {
-            closeFormModal.onclick = () => this.resetForm();
+            closeFormModal.onclick = () => {
+                this.resetForm();
+                this.refreshInventory();
+            };
         }
 
         const form = document.getElementById('mobile-asset-form');
@@ -499,10 +513,16 @@ const ui = {
             }
             // -------------------------------------------------------------
 
-            // --- NUEVA SUBIDA DIRECTA DE IMAGEN ---
+            // --- NUEVA SUBIDA DE IMAGEN ---
             if (this.tempFileData && recordId) {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SUBIENDO IMAGEN...';
-                await api.uploadAttachment(recordId, 'Foto', this.tempFileData);
+                try {
+                    await api.uploadAttachment(recordId, 'Foto', this.tempFileData);
+                    this.showToast('✅ Imagen guardada', 'success');
+                } catch (imgError) {
+                    console.error("Error guardando foto:", imgError);
+                    this.showToast('⚠️ Datos guardados pero la imagen falló', 'error');
+                }
                 this.tempFileData = null; // Limpiar después de subir
             }
 
