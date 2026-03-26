@@ -330,22 +330,22 @@ const ui = {
 
     bindEvents() {
         const btnNewAsset = document.getElementById('btn-new-asset');
+        if (btnNewAsset) {
             btnNewAsset.onclick = () => {
                 this.resetForm();
                 document.getElementById('form-modal-title').innerText = "Registrar Nuevo Equipo";
                 document.getElementById('form-modal-overlay').classList.remove('hidden');
                 document.getElementById('mob-id').value = this.generateNextMalId();
                 
-                // Forzar scroll al inicio del formulario para evitar que aparezca a la mitad
                 const modalBody = document.querySelector('.full-screen-modal .modal-body');
                 if (modalBody) modalBody.scrollTop = 0;
                 
-                // Enfocar el primer campo (Marca) después de abrir
                 setTimeout(() => {
                     const firstInput = document.getElementById('mob-brand');
                     if (firstInput) firstInput.focus();
                 }, 300);
             };
+        }
 
         const closeFormModal = document.getElementById('close-form-modal');
         if (closeFormModal) {
