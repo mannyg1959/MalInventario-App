@@ -22,9 +22,16 @@ const api = {
             throw new Error('CONFIG_MISSING');
         }
 
-        // Limpieza de espacios pero respetando MAYÚSCULAS/minúsculas
-        const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
-        const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
+        // --- LIMPIEZA INTELIGENTE DE CREDENCIALES ---
+        let cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
+        // Si el usuario pegó la URL de Airtable completa, extraemos el ID 'app...'
+        if (cleanBaseId.includes('airtable.com/')) {
+            const match = cleanBaseId.match(/app[a-zA-Z0-9]{14,}/);
+            if (match) cleanBaseId = match[0];
+        }
+
+        // Limpiar el API Key de posibles prefijos "Bearer " o espacios
+        const cleanApiKey = state.config.apiKey.replace(/Bearer\s+/i, '').trim().replace(/\s/g, '');
 
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
         const url = `${baseUrl}/${cleanBaseId}${path}`;
@@ -598,14 +605,22 @@ const ui = {
         `;
         modal.classList.remove('hidden');
         document.getElementById('save-config').onclick = async () => {
-            const bid = document.getElementById('config-base').value.trim();
+            let bid = document.getElementById('config-base').value.trim();
             const key = document.getElementById('config-key').value.trim();
+            
             if (!bid || !key) {
                 await ui.alert('Por favor ingresa ambos datos para conectar.', 'Datos Incompletos');
                 return;
             }
+
+            // Normalización al guardar para evitar errores de persistencia
+            if (bid.includes('airtable.com/')) {
+                const match = bid.match(/app[a-zA-Z0-9]{14,}/);
+                if (match) bid = match[0];
+            }
+            
             localStorage.setItem('airtable_base_id', bid);
-            localStorage.setItem('airtable_api_key', key);
+            localStorage.setItem('airtable_api_key', key.replace(/Bearer\s+/i, '').trim());
             location.reload();
         };
     },

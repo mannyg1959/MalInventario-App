@@ -23,9 +23,22 @@ const state = {
 const api = {
     async request(path, method = 'GET', data = null, isMeta = false) {
         if (!state.config.baseId || !state.config.apiKey) { ui.showConfig(); throw new Error('Falta Configuración'); }
+        
+        // --- LIMPIEZA INTELIGENTE DE CREDENCIALES ---
+        let cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
+        if (cleanBaseId.includes('airtable.com/')) {
+            const match = cleanBaseId.match(/app[a-zA-Z0-9]{14,}/);
+            if (match) cleanBaseId = match[0];
+        }
+
+        const cleanApiKey = state.config.apiKey.replace(/Bearer\s+/i, '').trim().replace(/\s/g, '');
+
         const baseUrl = isMeta ? 'https://api.airtable.com/v0/meta/bases' : 'https://api.airtable.com/v0';
-        const url = `${baseUrl}/${state.config.baseId}${path}`;
-        const headers = { 'Authorization': `Bearer ${state.config.apiKey.trim()}`, 'Content-Type': 'application/json' };
+        const url = `${baseUrl}/${cleanBaseId}${path}`;
+        const headers = { 
+            'Authorization': `Bearer ${cleanApiKey}`, 
+            'Content-Type': 'application/json' 
+        };
         try {
             ui.setLoading(true);
             const response = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : null });
@@ -117,8 +130,15 @@ const ui = {
     },
 
     processAndSave(bid, key) {
-        state.config.baseId = bid.trim();
-        state.config.apiKey = key.trim();
+        let cleanBid = bid.trim();
+        if (cleanBid.includes('airtable.com/')) {
+            const match = cleanBid.match(/app[a-zA-Z0-9]{14,}/);
+            if (match) cleanBid = match[0];
+        }
+
+        state.config.baseId = cleanBid;
+        state.config.apiKey = key.replace(/Bearer\s+/i, '').trim();
+        
         localStorage.setItem('airtable_base_id', state.config.baseId);
         localStorage.setItem('airtable_api_key', state.config.apiKey);
         location.reload(true); // Force reload
