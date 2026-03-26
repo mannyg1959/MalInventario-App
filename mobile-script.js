@@ -498,7 +498,13 @@ const ui = {
                 this.tempFileData = null; // Limpiar después de subir
             }
 
-            this.resetForm();
+            const wantsToContinue = await ui.confirm('¿Deseas seguir registrando otros equipos?', '¡Registro Exitoso!', false);
+            
+            if (wantsToContinue) {
+                this.clearForm(); // Limpiar pero NO cerrar
+            } else {
+                this.resetForm(); // Limpiar y cerrar
+            }
             await this.refreshInventory();
         } catch (e) {
             const errorMsg = e.message || 'Error desconocido';
@@ -570,17 +576,29 @@ const ui = {
     },
 
     resetForm() {
-        state.currentEditId = null;
-        this.tempFileData = null; // Limpiar binario
-        document.getElementById('mobile-asset-form').reset();
-        document.getElementById('mob-preview-box').innerHTML = `<i class="fas fa-camera"></i><p>Pega un enlace abajo</p>`;
-        document.getElementById('mob-btn-save').innerHTML = '<i class="fas fa-save"></i> GUARDAR REGISTRO';
-        document.getElementById('mob-btn-cancel').classList.add('hidden');
-        document.getElementById('mob-id').value = this.generateNextMalId();
-
+        this.clearForm();
         // Regresar al estado inicial: Cerrar el panel del formulario
         const modal = document.getElementById('form-modal-overlay');
         if (modal) modal.classList.add('hidden');
+    },
+
+    clearForm() {
+        state.currentEditId = null;
+        this.tempFileData = null; // Limpiar binario
+        const form = document.getElementById('mobile-asset-form');
+        if (form) form.reset();
+        
+        const preview = document.getElementById('mob-preview-box');
+        if (preview) preview.innerHTML = `<i class="fas fa-camera"></i><p>Pega un enlace abajo</p>`;
+        
+        const btnSave = document.getElementById('mob-btn-save');
+        if (btnSave) btnSave.innerHTML = '<i class="fas fa-save"></i> GUARDAR REGISTRO';
+        
+        const btnCancel = document.getElementById('mob-btn-cancel');
+        if (btnCancel) btnCancel.classList.add('hidden');
+        
+        const idInput = document.getElementById('mob-id');
+        if (idInput) idInput.value = this.generateNextMalId();
     },
 
     generateNextMalId() {

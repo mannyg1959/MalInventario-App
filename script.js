@@ -448,12 +448,24 @@ const ui = {
                 if (editId) {
                     await api.update('Assets', editId, fields);
                     this.notify('¡Equipo actualizado!');
+                    await this.renderView('inventory');
                 } else {
                     fields['ID'] = this.generateNextMalId();
                     await api.create('Assets', fields);
-                    this.notify('¡Equipo registrado!');
+                    
+                    // Nuevo flujo de confirmación para creación
+                    this.confirmSuccess(
+                        '¡Equipo Registrado!', 
+                        'El equipo se ha guardado correctamente en Airtable.',
+                        () => this.renderView('inventory'), // Seguir: Solo refresca (limpia form)
+                        () => {
+                            this.renderView('inventory');
+                            setTimeout(() => {
+                                document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                            }, 500);
+                        } // Terminar: Refresca y baja a la lista
+                    );
                 }
-                await this.renderView('inventory');
             } catch (err) { alert('ERROR: ' + err.message); } finally { btn.disabled = false; btn.innerText = 'GUARDAR DATOS'; }
         };
     },
@@ -590,9 +602,24 @@ const ui = {
 
             const editId = document.getElementById('employee-form').dataset.editId;
             try {
-                if (editId) await api.update('Empleados', editId, fieldsData);
-                else await api.create('Empleados', fieldsData);
-                this.renderView('employees');
+                if (editId) {
+                    await api.update('Empleados', editId, fieldsData);
+                    this.notify('¡Empleado actualizado!');
+                    this.renderView('employees');
+                } else {
+                    await api.create('Empleados', fieldsData);
+                    this.confirmSuccess(
+                        '¡Personal Guardado!',
+                        'El registro del empleado se ha completado con éxito.',
+                        () => this.renderView('employees'),
+                        () => {
+                            this.renderView('employees');
+                            setTimeout(() => {
+                                document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                            }, 500);
+                        }
+                    );
+                }
             } catch (err) { alert(err.message); btn.disabled = false; btn.innerText = 'GUARDAR'; }
         };
     },
@@ -760,8 +787,17 @@ const ui = {
                 // 2. Actualizar estado del equipo
                 await api.update('Assets', assetId, { 'Estado': 'Asignado' });
 
-                this.notify('¡Equipo asignado correctamente!');
-                await this.renderView('assignments');
+                this.confirmSuccess(
+                    '¡Equipo Asignado!',
+                    'La asignación se ha registrado correctamente.',
+                    () => this.renderView('assignments'),
+                    () => {
+                        this.renderView('assignments');
+                        setTimeout(() => {
+                            document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                        }, 500);
+                    }
+                );
             } catch (err) {
                 alert('ERROR: ' + err.message);
             } finally {
@@ -983,7 +1019,38 @@ const ui = {
     
     showConfig() { document.getElementById('config-overlay').classList.remove('hidden'); },
     setLoading(l) { const s = document.getElementById('system-indicator'); if(s) s.style.background = l ? '#fbbf24' : '#10b981'; },
-    notify(m) { const t = document.createElement('div'); t.style = "position:fixed;bottom:30px;right:30px;background:#3b5da3;color:white;padding:15px 35px;border-radius:60px;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,0.4)"; t.innerText = m; document.body.appendChild(t); setTimeout(()=>t.remove(), 3000); }
+    notify(m) { 
+        const t = document.createElement('div'); 
+        t.style = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:12px 30px;border-radius:50px;z-index:10000;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-weight:600;display:flex;align-items:center;gap:10px;animation:slideDown 0.3s ease-out"; 
+        t.innerHTML = `<i class="fas fa-check-circle" style="color:#10b981"></i> ${m}`; 
+        document.body.appendChild(t); 
+        setTimeout(()=> {
+            t.style.animation = "slideUp 0.3s ease-in forwards";
+            setTimeout(()=>t.remove(), 300);
+        }, 3000); 
+    },
+    confirmSuccess(title, message, onContinue, onFinish) {
+        const html = `
+            <div style="text-align:center; padding: 10px 0;">
+                <i class="fas fa-check-circle" style="font-size: 3.5rem; color: #10b981; margin-bottom: 20px; display: block;"></i>
+                <p style="font-size: 1.1rem; color: #1e293b; margin-bottom: 30px; font-weight: 500;">${message}</p>
+                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">¿Deseas realizar otro registro similar?</p>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button id="btn-success-continue" class="btn btn-primary" style="background: var(--primary-color) !important; color: white !important; flex: 1;">SÍ, SEGUIR</button>
+                    <button id="btn-success-finish" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 50px; padding: 8px 25px; font-weight: 700; cursor: pointer; flex: 1;">NO, ESTOY LISTO</button>
+                </div>
+            </div>
+        `;
+        this.openModal(title, html);
+        document.getElementById('btn-success-continue').onclick = () => {
+            this.closeModal();
+            if (onContinue) onContinue();
+        };
+        document.getElementById('btn-success-finish').onclick = () => {
+            this.closeModal();
+            if (onFinish) onFinish();
+        };
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => ui.init());
