@@ -196,6 +196,15 @@ const ui = {
         listContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div><p>Sincronizando...</p></div>';
 
         try {
+            // Primero, intentamos obtener metadatos para verificar permisos y tablas
+            let availableTables = [];
+            try {
+                const meta = await api.getTables();
+                availableTables = (meta.tables || []).map(t => t.name);
+            } catch (metaErr) {
+                console.warn("No se pudo acceder al Meta API:", metaErr);
+            }
+
             const [assets, assignments] = await Promise.all([
                 api.getAll('Assets'),
                 api.getAll('Asignaciones')
@@ -205,14 +214,31 @@ const ui = {
             this.populateSelects();
             this.renderList();
         } catch (e) {
-            const is404 = e.message.includes('404') || e.message.includes('NOT_FOUND');
+            const is404 = e.message.includes('404') || e.message.toLowerCase().includes('not found');
+            const is401 = e.message.includes('401') || e.message.toLowerCase().includes('unauthorized');
+
+            let detailedMessage = e.message;
+            if (is404) {
+                // Buscamos si existe alguna tabla con nombre similar
+                try {
+                    const meta = await api.getTables();
+                    const names = meta.tables.map(t => t.name).join(', ');
+                    detailedMessage = `No se encontró la tabla 'Assets'. Tablas encontradas en esta base: [${names}]`;
+                } catch (metaErr) {
+                    detailedMessage = `Error 404: Base ID no encontrado o tabla 'Assets' no existe en esta Base.`;
+                }
+            } else if (is401) {
+                detailedMessage = "Error 401: El Token (PAT) de Airtable es inválido o ha expirado.";
+            }
+
             listContainer.innerHTML = `
-                <div class="loader-container">
-                    <p style="font-weight:bold; color:#1e293b">Error de Conexión</p>
-                    <p style="font-size:0.75rem; color:#ef4444; margin: 10px 0;">
-                        ${is404 ? 'No se encuentra la Base de Datos o la tabla Assets. Verifica que el Base ID sea correcto.' : e.message}
+                <div class="loader-container" style="padding: 20px;">
+                    <p style="font-weight:bold; color:#1e293b; margin-bottom: 5px;">Error de Conexión</p>
+                    <p style="font-size:0.8rem; color:#ef4444; margin: 10px 0; line-height: 1.4; background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #fecaca;">
+                        ${detailedMessage}
                     </p>
-                    <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile">REVISAR CONFIGURACIÓN</button>
+                    <button onclick="ui.showConfigModal()" class="btn btn-primary-mobile" style="margin-top: 10px;">REVISAR CONFIGURACIÓN</button>
+                    <p style="font-size:0.65rem; color:#64748b; margin-top: 15px;">Token: ${state.config.apiKey.slice(0, 5)}... | Base: ${state.config.baseId.slice(0, 5)}...</p>
                 </div>`;
         }
     },
