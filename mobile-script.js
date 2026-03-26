@@ -61,7 +61,7 @@ const api = {
     // Nueva función para subir archivos binarios directamente
     async uploadAttachment(recordId, fieldName, fileData) {
         const cleanBaseId = state.config.baseId.trim().replace(/\s/g, '');
-        const cleanApiKey = state.config.apiKey.trim().replace(/\s/g, '');
+        const cleanApiKey = state.config.apiKey.replace(/Bearer\s+/i, '').trim().replace(/\s/g, '');
         const url = `https://content.airtable.com/v0/${cleanBaseId}/${recordId}/${fieldName}/uploadAttachment`;
         const headers = {
             'Authorization': `Bearer ${cleanApiKey}`,
@@ -330,14 +330,22 @@ const ui = {
 
     bindEvents() {
         const btnNewAsset = document.getElementById('btn-new-asset');
-        if (btnNewAsset) {
             btnNewAsset.onclick = () => {
                 this.resetForm();
                 document.getElementById('form-modal-title').innerText = "Registrar Nuevo Equipo";
                 document.getElementById('form-modal-overlay').classList.remove('hidden');
                 document.getElementById('mob-id').value = this.generateNextMalId();
+                
+                // Forzar scroll al inicio del formulario para evitar que aparezca a la mitad
+                const modalBody = document.querySelector('.full-screen-modal .modal-body');
+                if (modalBody) modalBody.scrollTop = 0;
+                
+                // Enfocar el primer campo (Marca) después de abrir
+                setTimeout(() => {
+                    const firstInput = document.getElementById('mob-brand');
+                    if (firstInput) firstInput.focus();
+                }, 300);
             };
-        }
 
         const closeFormModal = document.getElementById('close-form-modal');
         if (closeFormModal) {
@@ -680,27 +688,35 @@ const ui = {
     async confirm(msg, title = "Atención", isDanger = true) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('mob-confirm-overlay');
-            document.getElementById('mob-confirm-title').innerText = title;
+            document.getElementById('mob-confirm-title').innerText = title || "¿Estás seguro?";
             document.getElementById('mob-confirm-message').innerText = msg;
             
             const btnOk = document.getElementById('mob-confirm-ok');
+            const btnCancel = document.getElementById('mob-confirm-cancel');
+            
             if (isDanger) {
                 btnOk.style.backgroundColor = 'var(--error)';
             } else {
-                btnOk.style.backgroundColor = 'var(--primary-color)';
+                btnOk.style.backgroundColor = 'var(--success)';
             }
+
+            // Asegurarnos de que el modal sea visible por encima de todo
+            overlay.style.display = 'flex';
+            overlay.classList.remove('hidden');
 
             const cleanup = (result) => {
                 overlay.classList.add('hidden');
+                overlay.style.display = 'none';
                 btnOk.onclick = null;
-                document.getElementById('mob-confirm-cancel').onclick = null;
+                btnCancel.onclick = null;
                 resolve(result);
             };
 
             btnOk.onclick = () => cleanup(true);
-            document.getElementById('mob-confirm-cancel').onclick = () => cleanup(false);
-
-            overlay.classList.remove('hidden');
+            btnCancel.onclick = () => {
+                console.log("Cancelando...");
+                cleanup(false);
+            };
         });
     },
 
