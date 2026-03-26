@@ -299,6 +299,11 @@ select {
     margin-top: 10px;
 }
 
+.btn-camera-trigger:active {
+    opacity: 0.85;
+    transform: scale(0.95);
+}
+
 /* --- SEARCH & FILTERS --- */
 .filters-section {
     padding: 0 10px;
