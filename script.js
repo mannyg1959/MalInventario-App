@@ -449,22 +449,15 @@ const ui = {
                     await api.update('Assets', editId, fields);
                     this.notify('¡Equipo actualizado!');
                     await this.renderView('inventory');
-                } else {
                     fields['ID'] = this.generateNextMalId();
                     await api.create('Assets', fields);
+                    this.notify('¡Equipo registrado!');
                     
-                    // Nuevo flujo de confirmación para creación
-                    this.confirmSuccess(
-                        '¡Equipo Registrado!', 
-                        'El equipo se ha guardado correctamente en Airtable.',
-                        () => this.renderView('inventory'), // Seguir: Solo refresca (limpia form)
-                        () => {
-                            this.renderView('inventory');
-                            setTimeout(() => {
-                                document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
-                            }, 500);
-                        } // Terminar: Refresca y baja a la lista
-                    );
+                    // Cierre y refresco directo de la vista de Inventario (sin confirmación)
+                    await this.renderView('inventory');
+                    setTimeout(() => {
+                        document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 500);
                 }
             } catch (err) { alert('ERROR: ' + err.message); } finally { btn.disabled = false; btn.innerText = 'GUARDAR DATOS'; }
         };
@@ -608,17 +601,11 @@ const ui = {
                     this.renderView('employees');
                 } else {
                     await api.create('Empleados', fieldsData);
-                    this.confirmSuccess(
-                        '¡Personal Guardado!',
-                        'El registro del empleado se ha completado con éxito.',
-                        () => this.renderView('employees'),
-                        () => {
-                            this.renderView('employees');
-                            setTimeout(() => {
-                                document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
-                            }, 500);
-                        }
-                    );
+                    this.notify('¡Personal Guardado!');
+                    this.renderView('employees');
+                    setTimeout(() => {
+                        document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 500);
                 }
             } catch (err) { alert(err.message); btn.disabled = false; btn.innerText = 'GUARDAR'; }
         };
@@ -787,17 +774,11 @@ const ui = {
                 // 2. Actualizar estado del equipo
                 await api.update('Assets', assetId, { 'Estado': 'Asignado' });
 
-                this.confirmSuccess(
-                    '¡Equipo Asignado!',
-                    'La asignación se ha registrado correctamente.',
-                    () => this.renderView('assignments'),
-                    () => {
-                        this.renderView('assignments');
-                        setTimeout(() => {
-                            document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
-                        }, 500);
-                    }
-                );
+                this.notify('¡Equipo Asignado!');
+                await this.renderView('assignments');
+                setTimeout(() => {
+                    document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                }, 500);
             } catch (err) {
                 alert('ERROR: ' + err.message);
             } finally {

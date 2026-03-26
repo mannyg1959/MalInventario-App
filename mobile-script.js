@@ -528,13 +528,8 @@ const ui = {
                 this.tempFileData = null; // Limpiar después de subir
             }
 
-            const wantsToContinue = await ui.confirm('¿Deseas seguir registrando otros equipos?', '¡Registro Exitoso!', false);
-            
-            if (wantsToContinue) {
-                this.clearForm(); // Limpiar pero NO cerrar
-            } else {
-                this.resetForm(); // Limpiar y cerrar
-            }
+            // Cierre automático y refresco como solicitó el usuario
+            this.resetForm(); // Limpiar y cerrar modal
             await this.refreshInventory();
         } catch (e) {
             const errorMsg = e.message || 'Error desconocido';
