@@ -61,21 +61,23 @@ const api = {
     // Nueva función para subir archivos y obtener URL pública temporal (requerido por Airtable)
     async uploadAttachment(recordId, fieldName, fileData) {
         try {
-            // Subimos la imagen en base64 a un host público temporal para que Airtable la descargue
+            // Subimos la imagen cruda a tmpfiles (Soporta CORS y no requiere API KEY)
             const formData = new FormData();
-            formData.append('key', '6d207e02198a847aa98d0a2a901485a5'); // FreeImage.host API pública
-            formData.append('action', 'upload');
-            formData.append('source', fileData.file);
-            formData.append('format', 'json');
+            formData.append('file', fileData.rawFile);
 
-            const uploadRes = await fetch('https://freeimage.host/api/1/upload', {
+            const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
                 method: 'POST',
                 body: formData
             });
 
-            if (!uploadRes.ok) throw new Error('Error al subir imagen al servidor temporal');
+            if (!uploadRes.ok) {
+                const errTxt = await uploadRes.text();
+                throw new Error(`Error subiendo imagen a host temporal: ${errTxt}`);
+            }
+            
             const data = await uploadRes.json();
-            const imageUrl = data.image.url;
+            // TmpFiles devuelve una URL de visualización. Para descarga directa, añadimos "dl/"
+            const imageUrl = data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
 
             // Ahora actualizamos el registro de Airtable con esa URL
             return await this.update('Assets', recordId, {
@@ -432,7 +434,8 @@ const ui = {
                     this.tempFileData = {
                         contentType: file.type,
                         file: base64Data,
-                        filename: `foto_${Date.now()}.${file.name.split('.').pop()}`
+                        filename: `foto_${Date.now()}.${file.name.split('.').pop()}`,
+                        rawFile: file // Guardamos el blob crudo para subirlo por Form Data
                     };
 
                     // Limpiar el campo de URL manual si se captura una foto nueva
