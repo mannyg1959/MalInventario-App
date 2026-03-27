@@ -486,35 +486,43 @@ const ui = {
             else if (!selectedEmployeeId && fields['Estado'] === 'Asignado') fields['Estado'] = 'Disponible';
 
             let recordId = state.currentEditId;
-            if (recordId) {
-                await api.update('Assets', recordId, fields);
-                this.showToast('✅ Registro Actualizado');
-            } else {
-                fields['ID'] = document.getElementById('mob-id').value || this.generateNextMalId();
-                const newRecord = await api.create('Assets', fields);
-                // Soporta tanto la vieja API (objeto simple) como la nueva (array results)
-                recordId = newRecord.id || (newRecord.records && newRecord.records[0] ? newRecord.records[0].id : null);
-                if (!recordId) throw new Error("Airtable no devolvió un ID válido.");
-                this.showToast('✅ Registro Guardado');
+            try {
+                if (recordId) {
+                    await api.update('Assets', recordId, fields);
+                    this.showToast('✅ Registro Actualizado');
+                } else {
+                    fields['ID'] = document.getElementById('mob-id').value || this.generateNextMalId();
+                    const newRecord = await api.create('Assets', fields);
+                    recordId = newRecord.id || (newRecord.records && newRecord.records[0] ? newRecord.records[0].id : null);
+                    if (!recordId) throw new Error("Airtable no devolvió un ID válido.");
+                    this.showToast('✅ Registro Guardado');
+                }
+            } catch (assetErr) {
+                alert(`Error al guardar Equipo: ${assetErr.message}`);
+                throw assetErr; // abort
             }
 
             // --- GESTIÓN DE TABLA ASIGNACIONES (Garantizar Coherencia) ---
             const isAsignado = (fields['Estado'] === 'Asignado');
 
-            if (isAsignado && selectedEmployeeId) {
-                // Si el estado es Asignado y hay un empleado, aseguramos que exista la asignación
-                if (!currentAssignment || currentAssignment.fields.employee?.[0] !== selectedEmployeeId) {
-                    if (currentAssignment) await api.delete('Asignaciones', currentAssignment.id);
-                    await api.create('Asignaciones', {
-                        'ID Asignación': `ASIG-${recordId.slice(-4)}-${Date.now().toString().slice(-4)}`,
-                        'asset': [recordId],
-                        'employee': [selectedEmployeeId],
-                        'assignmentDate': new Date().toISOString().split('T')[0]
-                    });
+            try {
+                if (isAsignado && selectedEmployeeId) {
+                    // Si el estado es Asignado y hay un empleado, aseguramos que exista la asignación
+                    if (!currentAssignment || currentAssignment.fields.employee?.[0] !== selectedEmployeeId) {
+                        if (currentAssignment) await api.delete('Asignaciones', currentAssignment.id);
+                        await api.create('Asignaciones', {
+                            'ID Asignación': `ASIG-${recordId.slice(-4)}-${Date.now().toString().slice(-4)}`,
+                            'asset': [recordId],
+                            'employee': [selectedEmployeeId],
+                            'assignmentDate': new Date().toISOString().split('T')[0]
+                        });
+                    }
+                } else if (currentAssignment) {
+                    await api.delete('Asignaciones', currentAssignment.id);
                 }
-            } else if (currentAssignment) {
-                // Si el estado NO es 'Asignado', eliminamos cualquier asignación previa
-                await api.delete('Asignaciones', currentAssignment.id);
+            } catch (asigErr) {
+                alert(`Error al guardar Asignación: ${asigErr.message}`);
+                throw asigErr; // abort
             }
             // -------------------------------------------------------------
 
