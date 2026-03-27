@@ -510,26 +510,12 @@ const ui = {
                     if (!currentAssignment || currentAssignment.fields.employee?.[0] !== selectedEmployeeId) {
                         if (currentAssignment) await api.delete('Asignaciones', currentAssignment.id);
                         
-                        const asigPayload = {
+                        await api.create('Asignaciones', {
                             'ID Asignación': `ASIG-${recordId.slice(-4)}-${Date.now().toString().slice(-4)}`,
                             'asset': [recordId],
                             'employee': [selectedEmployeeId],
                             'assignmentDate': new Date().toISOString().split('T')[0]
-                        };
-
-                        try {
-                            await api.create('Asignaciones', asigPayload);
-                        } catch (primaryErr) {
-                            if (primaryErr.message.includes('belongs to table') && primaryErr.message.includes('links to table')) {
-                                // Auto-corrección: Los campos en Airtable están nombrados al revés de su enlace real
-                                console.warn("Airtable schema mismatch detected. Swapping fields...");
-                                asigPayload['asset'] = [selectedEmployeeId];
-                                asigPayload['employee'] = [recordId];
-                                await api.create('Asignaciones', asigPayload);
-                            } else {
-                                throw primaryErr;
-                            }
-                        }
+                        });
                     }
                 } else if (currentAssignment) {
                     await api.delete('Asignaciones', currentAssignment.id);
