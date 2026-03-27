@@ -764,12 +764,25 @@ const ui = {
                 const descId = `${eq?.fields.ID || 'EQ'}-${em?.fields['Nombre Completo']?.split(' ')[0] || 'EMP'}-${Date.now().toString().slice(-4)}`;
 
                 // 1. Crear asignación
-                await api.create('Asignaciones', {
+                const asigPayload = {
                     'ID Asignación': descId,
                     'asset': [assetId],
                     'employee': [employeeId],
                     'assignmentDate': date
-                });
+                };
+                
+                try {
+                    await api.create('Asignaciones', asigPayload);
+                } catch (primaryErr) {
+                    if (primaryErr.message.includes('belongs to table') && primaryErr.message.includes('links to table')) {
+                        console.warn("Airtable schema mismatch detected. Swapping fields...");
+                        asigPayload['asset'] = [employeeId];
+                        asigPayload['employee'] = [assetId];
+                        await api.create('Asignaciones', asigPayload);
+                    } else {
+                        throw primaryErr;
+                    }
+                }
 
                 // 2. Actualizar estado del equipo
                 await api.update('Assets', assetId, { 'Estado': 'Asignado' });
