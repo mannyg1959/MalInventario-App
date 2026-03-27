@@ -173,7 +173,8 @@ const ui = {
         // Use state.categories for the form select
         const catSel = document.getElementById('mob-cat');
         if (catSel) {
-            catSel.innerHTML = state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            catSel.innerHTML = '<option value="">-- Seleccionar --</option>' +
+                state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Dynamically populate filter category select from existing equipments

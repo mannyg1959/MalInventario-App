@@ -53,7 +53,23 @@ const api = {
     async delete(table, id) { return await this.request(`/${table}/${id}`, 'DELETE'); },
     async addField(tableId, fieldConfig) { return await this.request(`/tables/${tableId}/fields`, 'POST', fieldConfig, true); },
     async getTables() { return await this.request('/tables', 'GET', null, true); },
-    async createTable(data) { return await this.request('/tables', 'POST', data, true); }
+    async createTable(data) { return await this.request('/tables', 'POST', data, true); },
+    
+    // Subida mediante TmpFiles.org (CORS Compatible API)
+    async uploadAttachment(fileBlob) {
+        const formData = new FormData();
+        formData.append('file', fileBlob);
+        const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const json = await response.json();
+        if (json.status !== 'success') throw new Error('Falló subida de imagen');
+        
+        let url = json.data.url;
+        url = url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+        return url;
+    }
 };
 
 const ui = {
@@ -272,14 +288,15 @@ const ui = {
                     <!-- FILA 1: Datos principales lineales -->
                     <div class="field-group" style="grid-column: 2;"><label>ID MAL</label><input type="text" id="f-id" readonly style="background:#f1f5f9; font-weight:bold"></div>
                     <div class="field-group" style="grid-column: 3;"><label>Marca</label>
-                        <select id="f-brand">
+                        <select id="f-brand" required>
                             <option value="">-- Seleccionar --</option>
                             ${state.brands.map(b => `<option value="${b.fields.Nombre||b.fields.Name}">${b.fields.Nombre||b.fields.Name}</option>`).join('')}
                         </select>
                     </div>
                     <div class="field-group" style="grid-column: 4;"><label>Nº de Serie</label><input type="text" id="f-sn"></div>
                     <div class="field-group" style="grid-column: 5;"><label>Categoría</label>
-                        <select id="f-cat">
+                        <select id="f-cat" required>
+                            <option value="">-- Seleccionar --</option>
                             ${state.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
                         </select>
                     </div>
@@ -287,9 +304,12 @@ const ui = {
 
                     <!-- FILA 2: URL, Descripción y Botón -->
                     <div class="field-group" style="grid-column: 2 / span 2; position: relative;">
-                        <label>Enlace Foto (Opcional)</label>
-                        <input type="text" id="f-img" placeholder="Pegue el enlace aquí..." style="width:100%; height:30px !important; font-size:0.75rem !important; border:1px solid #3b5da3; background:#fff">
-                        <span id="url-status" style="display: block; font-size:0.6rem; color:#64748b; font-weight:600; margin-top: 2px;">Soporta Drive / Dropbox</span>
+                        <label>Fotografía del Equipo</label>
+                        <div style="display:flex; width:100%; gap:5px;">
+                            <input type="file" id="f-file-input" accept="image/*" style="display:none">
+                            <input type="text" id="f-img" readonly placeholder="Seleccionar o tomar foto..." style="flex:1; height:30px !important; font-size:0.75rem !important; border:1px solid #3b5da3; background:#f0f7ff; cursor:pointer" onclick="document.getElementById('f-file-input').click()">
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('f-file-input').click()" style="width:40px; height:30px !important; padding:0;"><i class="fas fa-camera"></i></button>
+                        </div>
                     </div>
 
                     <div class="field-group" style="grid-column: 4 / span 2;">
@@ -346,31 +366,30 @@ const ui = {
 
         // Lógica de Previsualización Instantánea
         const imgInput = document.getElementById('f-img');
-        const handleUrlChange = () => {
-            const rawUrl = imgInput.value.trim();
-            const cleanUrl = this.formatImageUrl(rawUrl);
-            const previewBox = document.getElementById('img-preview-box');
-            const status = document.getElementById('url-status'); // Puede ser null
+        const fileInput = document.getElementById('f-file-input');
+        const previewBox = document.getElementById('img-preview-box');
 
-            if (cleanUrl) {
-                previewBox.innerHTML = `<img src="${cleanUrl}" style="width:100%; height:100%; object-fit:contain" 
-                    onload="if(document.getElementById('url-status')){ document.getElementById('url-status').innerText='✓ Imagen Lista'; document.getElementById('url-status').style.color='#10b981'; }"
-                    onerror="this.src=''; if(document.getElementById('url-status')){ document.getElementById('url-status').innerText='✕ Error de Acceso (Verifique Permisos en Drive)'; document.getElementById('url-status').style.color='#ef4444'; }">`;
-                if (status) {
-                    status.innerText = "Verificando acceso a la imagen...";
-                    status.style.color = "#3b5da3";
-                }
-            } else {
-                previewBox.innerHTML = `<i class="fas fa-camera" style="font-size:1.5rem;color:#cbd5e1"></i>`;
-                if (status) {
-                    status.innerText = "Soporta enlaces de Google Drive y Dropbox.";
-                    status.style.color = "#64748b";
-                }
-            }
+        // Restaurar estado de render anterior si estábamos editando
+        if (ui.tempFileData) {
+            previewBox.innerHTML = `<img src="${URL.createObjectURL(ui.tempFileData)}" style="width:100%; height:100%; object-fit:contain">`;
+            imgInput.value = ui.tempFileData.name;
+        }
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Mostrar el nombre del archivo
+            imgInput.value = file.name;
+            ui.tempFileData = file; // Guardar archivo globalmente
+            
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                previewBox.innerHTML = `<img src="${re.target.result}" style="width:100%; height:100%; object-fit:contain">`;
+            };
+            reader.readAsDataURL(file);
         };
-
-        imgInput.oninput = handleUrlChange;
-        imgInput.onpaste = () => setTimeout(handleUrlChange, 100);
 
         // Lógica de Filtros
         const filterId = document.getElementById('filter-id');
@@ -423,7 +442,6 @@ const ui = {
         document.getElementById('main-asset-form').onsubmit = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-save');
-            const url = this.formatImageUrl(imgInput.value.trim());
             btn.disabled = true; btn.innerText = 'GUARDANDO EN AIRTABLE...';
             
             try {
@@ -439,26 +457,40 @@ const ui = {
                     'Nombre': `${document.getElementById('f-brand').value} ${document.getElementById('f-model').value}`
                 };
 
-                if (url && (url.startsWith('http'))) {
-                    fields['Foto'] = [{ url: url }];
+                // Subida de Imagen
+                if (ui.tempFileData) {
+                    btn.innerText = 'SUBIENDO IMAGEN...';
+                    try {
+                        const uploadedUrl = await api.uploadAttachment(ui.tempFileData);
+                        fields['Foto'] = [{ url: uploadedUrl }];
+                    } catch (uploadErr) {
+                        alert('Error al subir imagen. Se guardará sin foto.');
+                        console.error(uploadErr);
+                    }
                 } else if (editId) {
-                    fields['Foto'] = []; // Vaciar en Airtable en caso de update
+                    fields['Foto'] = []; // Si es edición y no hay tempFile, eliminamos la foto
                 }
+
+                btn.innerText = 'GUARDANDO DATOS...';
 
                 if (editId) {
                     await api.update('Assets', editId, fields);
                     this.notify('¡Equipo actualizado!');
-                    await this.renderView('inventory');
+                } else {
                     fields['ID'] = this.generateNextMalId();
                     await api.create('Assets', fields);
                     this.notify('¡Equipo registrado!');
-                    
-                    // Cierre y refresco directo de la vista de Inventario (sin confirmación)
-                    await this.renderView('inventory');
-                    setTimeout(() => {
-                        document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
-                    }, 500);
                 }
+
+                // Limpiar TempFile después de guardado exitoso
+                ui.tempFileData = null;
+
+                // Cierre y refresco directo de la vista de Inventario
+                await this.renderView('inventory');
+                setTimeout(() => {
+                    document.querySelector('.table-container-scroll')?.scrollIntoView({ behavior: 'smooth' });
+                }, 500);
+
             } catch (err) { alert('ERROR: ' + err.message); } finally { btn.disabled = false; btn.innerText = 'GUARDAR DATOS'; }
         };
     },
